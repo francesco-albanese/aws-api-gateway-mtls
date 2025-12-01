@@ -1,0 +1,95 @@
+name: Terraform Deploy
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - sandbox
+          - staging
+          - uat
+          - production
+        default: 'sandbox'
+
+env:
+  AWS_REGION: eu-west-2
+  TERRAFORM_VERSION: 1.13.4
+
+jobs:
+  terraform:
+    name: Terraform Deploy
+    runs-on: ubuntu-latest
+
+    # Set environment based on trigger
+    environment:
+      name: ${{ github.event.inputs.environment || 'sandbox' }}
+
+    env:
+      ACCOUNT: ${{ github.event.inputs.environment || 'sandbox' }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          # Option 1: OIDC (recommended)
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+          # Option 2: Access keys (uncomment if not using OIDC)
+          # aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          # aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Create state.conf
+        run: |
+          cat > state.conf <<EOF
+          bucket       = "${{ secrets.TF_STATE_BUCKET }}"
+          key          = "environmental/\${{ env.ACCOUNT }}/terraform.tfstate"
+          region       = "${{ env.AWS_REGION }}"
+          use_lockfile = true
+          encrypt      = true
+          assume_role = {
+            role_arn = "${{ secrets.TF_STATE_ROLE_ARN }}"
+          }
+          EOF
+
+      - name: Terraform Init
+        run: make environmental-init ACCOUNT=${{ env.ACCOUNT }}
+
+      - name: Terraform Validate
+        run: make environmental-validate
+
+      - name: Terraform Plan
+        run: make environmental-plan ACCOUNT=${{ env.ACCOUNT }}
+
+      - name: Terraform Apply
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
+        run: make environmental-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="-auto-approve"
+
+      - name: Comment PR
+        if: github.event_name == 'pull_request'
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: '✅ Terraform plan completed. Review changes before merging.'
+            })
