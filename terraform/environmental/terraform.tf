@@ -6,10 +6,6 @@ terraform {
       source  = "hashicorp/aws"
       version = ">= 6.18.0"
     }
-    random = {
-      source  = "hashicorp/random"
-      version = ">= 3.7.2"
-    }
   }
 
   # Backend configuration provided via -backend-config=../../state.conf

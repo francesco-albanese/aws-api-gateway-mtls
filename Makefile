@@ -4,7 +4,7 @@ SHELL := /bin/bash
 
 PROJECT_NAME ?= aws-api-gateway-mtls
 ACCOUNT ?= sandbox
-AWS_PROFILE ?= sandbox
+AWS_PROFILE ?= awsclifranco-admin
 terraform = AWS_PROFILE=$(AWS_PROFILE) terraform
 
 include makefiles/terraform.mk

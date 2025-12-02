@@ -59,13 +59,10 @@ lib-cov
 coverage
 *.lcov
 .nyc_output
-.grunt
-bower_components
 .lock-wscript
 build/Release
 .node_repl_history
 *.tgz
-.yarn-integrity
 .env
 .env.test
 .env.production
@@ -76,16 +73,10 @@ out
 .nuxt
 dist
 .cache/
-.vuepress/dist
 .serverless/
 .fusebox/
-.dynamodb/
 .tern-port
 .vscode-test
-.yarn/cache
-.yarn/unplugged
-.yarn/build-state.yml
-.yarn/install-state.gz
 .pnp.*
 
 # AWS
@@ -104,16 +95,10 @@ config
 *.tfstate.*
 crash.log
 crash.*.log
-*.tfvars
-*.tfvars.json
 override.tf
 override.tf.json
 *_override.tf
 *_override.tf.json
-.terraformrc
-terraform.rc
-state.conf
-.terraform.lock.hcl
 
 # IDE
 .vscode/
@@ -122,14 +107,3 @@ state.conf
 *.swo
 *~
 .DS_Store
-*.sublime-project
-*.sublime-workspace
-
-# Certificates
-*.crt
-*.cer
-*.p12
-*.pfx
-*.jks
-*.keystore
-*.truststore

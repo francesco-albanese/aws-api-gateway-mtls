@@ -10,7 +10,7 @@ all:
 $(STACKS): $$@-init $$@-validate $$@-plan $$@-apply $$@-destroy
 
 STATE_CONF := state.conf
-environmental_KEY := $(PROJECT_NAME)
+environmental_KEY := $(PROJECT_NAME)/environmental/$(ACCOUNT)
 environmental_ACCOUNT := $(ACCOUNT)
 environmental_FLAGS := -var-file=env/$(ACCOUNT).tfvars
 shared-services-KEY := $(PROJECT_NAME)
@@ -99,7 +99,7 @@ destroy: $(addsuffix -destroy, $(STACKS))
 %-init:
 	@echo "++++ Initializing $* stack ++++"
 	@if [ -f $(STATE_CONF) ]; then \
-		$(terraform) -chdir=terraform/$* init -backend-config=../../$(STATE_CONF) $($*_FLAGS) $(TF_FLAGS); \
+		$(terraform) -chdir=terraform/$* init -backend-config=../../$(STATE_CONF) -backend-config="key=$($*_KEY)/terraform.tfstate" $($*_FLAGS) $(TF_FLAGS); \
 	else \
 		$(terraform) -chdir=terraform/$* init $($*_FLAGS) $(TF_FLAGS); \
 	fi
