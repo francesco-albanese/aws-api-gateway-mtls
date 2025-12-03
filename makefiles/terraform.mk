@@ -13,9 +13,6 @@ STATE_CONF := state.conf
 environmental_KEY := $(PROJECT_NAME)/environmental/$(ACCOUNT)
 environmental_ACCOUNT := $(ACCOUNT)
 environmental_FLAGS := -var-file=env/$(ACCOUNT).tfvars
-shared-services-KEY := $(PROJECT_NAME)
-shared-services-ACCOUNT := shared-services
-shared-services_FLAGS := -var-file=env/shared-services.tfvars
 
 tf-setup: ## install tfenv and tflint (macOS: use brew install terraform instead)
 tf-setup:
