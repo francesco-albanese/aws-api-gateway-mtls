@@ -1,0 +1,158 @@
+name: CA Bootstrap
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to bootstrap CA for'
+        required: true
+        type: choice
+        options:
+          - sandbox
+          - staging
+          - uat
+          - production
+        default: 'sandbox'
+
+env:
+  AWS_REGION: eu-west-2
+  PYTHON_VERSION: '3.13.7'
+
+jobs:
+  bootstrap-ca:
+    name: Bootstrap CA Infrastructure
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.event.inputs.environment }}
+
+    env:
+      ACCOUNT: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python & UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Generate CA certificates
+        run: |
+          # Create environment-specific output directory
+          OUTPUT_DIR="ca_operations/output/${{ env.ACCOUNT }}"
+          mkdir -p "$OUTPUT_DIR"
+
+          # Generate Root + Intermediate CA
+          uv run --group ca python -m ca_operations.scripts.bootstrap_ca --output-dir "$OUTPUT_DIR"
+
+      - name: Create truststore bundle
+        run: |
+          OUTPUT_DIR="ca_operations/output/${{ env.ACCOUNT }}"
+
+          uv run --group ca python -m ca_operations.scripts.create_truststore \
+            --ca-dir "$OUTPUT_DIR" \
+            --output "$OUTPUT_DIR/truststore/truststore.pem"
+
+      - name: Verify CA artifacts
+        run: |
+          OUTPUT_DIR="ca_operations/output/${{ env.ACCOUNT }}"
+
+          echo "Checking generated files..."
+          ls -lh "$OUTPUT_DIR/root-ca/"
+          ls -lh "$OUTPUT_DIR/intermediate-ca/"
+          ls -lh "$OUTPUT_DIR/truststore/"
+
+          # Verify certificate chain
+          echo "Verifying certificate chain..."
+          openssl verify -CAfile "$OUTPUT_DIR/truststore/truststore.pem" \
+            "$OUTPUT_DIR/intermediate-ca/IntermediateCA.pem" || true
+
+      - name: Upload CA artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: ca-${{ env.ACCOUNT }}
+          path: ca_operations/output/${{ env.ACCOUNT }}
+          retention-days: 1
+
+  setup-terraform:
+    name: Setup Terraform
+    needs: bootstrap-ca
+    uses: ./.github/workflows/reusable-setup-terraform.yml
+    with:
+      environment: ${{ github.event.inputs.environment }}
+      aws_region: eu-west-2
+    secrets:
+      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+
+  terraform-deploy:
+    name: Deploy Infrastructure
+    needs: setup-terraform
+    runs-on: ubuntu-latest
+
+    environment:
+      name: ${{ github.event.inputs.environment }}
+
+    env:
+      ACCOUNT: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download CA artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: ca-${{ env.ACCOUNT }}
+          path: ca_operations/output/${{ env.ACCOUNT }}
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.13.4'
+
+      - name: Terraform Init
+        env:
+          AWS_PROFILE: ""
+        run: make environmental-init ACCOUNT=${{ env.ACCOUNT }}
+
+      - name: Terraform Plan
+        env:
+          AWS_PROFILE: ""
+        run: make environmental-plan ACCOUNT=${{ env.ACCOUNT }}
+
+      - name: Terraform Apply
+        env:
+          AWS_PROFILE: ""
+        run: make environmental-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="-auto-approve"
+
+      - name: Clean up local CA artifacts
+        if: always()
+        run: |
+          # Remove sensitive files from runner
+          rm -rf ca_operations/output/${{ env.ACCOUNT }}
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "## CA Bootstrap Complete ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ env.ACCOUNT }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Created Resources:" >> $GITHUB_STEP_SUMMARY
+          echo "- Root CA (10yr validity)" >> $GITHUB_STEP_SUMMARY
+          echo "- Intermediate CA (5yr validity)" >> $GITHUB_STEP_SUMMARY
+          echo "- S3 Truststore bucket" >> $GITHUB_STEP_SUMMARY
+          echo "- SSM Parameters (4 total)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Next Steps:" >> $GITHUB_STEP_SUMMARY
+          echo "1. Verify parameters in AWS Console: Systems Manager → Parameter Store" >> $GITHUB_STEP_SUMMARY
+          echo "2. Configure API Gateway to use S3 truststore" >> $GITHUB_STEP_SUMMARY
+          echo "3. Provision client certificates with provision_client.py" >> $GITHUB_STEP_SUMMARY

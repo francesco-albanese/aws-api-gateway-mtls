@@ -13,3 +13,9 @@ variable "account_name" {
   description = "The name of the account (sandbox/staging/uat/production)"
   type        = string
 }
+
+variable "project_name" {
+  description = "Project name for parameter store namespacing"
+  type        = string
+  default     = "aws-api-gateway-mtls"
+}

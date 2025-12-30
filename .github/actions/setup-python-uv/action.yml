@@ -1,0 +1,22 @@
+name: 'Setup Python & UV'
+description: 'Install Python and UV package manager'
+
+inputs:
+  python-version:
+    description: 'Python version to install'
+    required: false
+    default: '3.13.7'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Set up Python
+      uses: actions/setup-python@v5
+      with:
+        python-version: ${{ inputs.python-version }}
+
+    - name: Install uv
+      shell: bash
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
