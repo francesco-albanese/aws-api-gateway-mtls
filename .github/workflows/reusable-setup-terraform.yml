@@ -12,10 +12,6 @@ on:
         required: false
         type: string
         default: 'eu-west-2'
-    secrets:
-      AWS_ROLE_ARN:
-        description: 'AWS IAM role ARN for OIDC authentication'
-        required: true
     outputs:
       terraform_version:
         description: 'Terraform version used'
@@ -34,10 +30,33 @@ jobs:
       terraform_version: ${{ steps.setup-tf.outputs.terraform-version }}
 
     steps:
+      - name: Select AWS Role ARN
+        id: select-role
+        run: |
+          ENV="${{ inputs.environment }}"
+          case "$ENV" in
+            sandbox)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
+              ;;
+            uat)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Error: Unknown environment $ENV"
+              exit 1
+              ;;
+          esac
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
           aws-region: ${{ inputs.aws_region }}
 
       - name: Setup Terraform
