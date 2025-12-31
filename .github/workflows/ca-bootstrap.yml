@@ -23,6 +23,10 @@ jobs:
     name: Bootstrap CA Infrastructure
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write  # Required for OIDC authentication
+      contents: read   # Required for checkout
+
     environment:
       name: ${{ github.event.inputs.environment }}
 
@@ -90,6 +94,10 @@ jobs:
     name: Deploy Infrastructure
     needs: setup-terraform
     runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write  # Required for OIDC authentication
+      contents: read   # Required for checkout
 
     environment:
       name: ${{ github.event.inputs.environment }}

@@ -29,6 +29,10 @@ jobs:
     name: Terraform Deploy
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write  # Required for OIDC authentication
+      contents: read   # Required for checkout
+
     # Set environment based on trigger
     environment:
       name: ${{ github.event.inputs.environment || 'sandbox' }}

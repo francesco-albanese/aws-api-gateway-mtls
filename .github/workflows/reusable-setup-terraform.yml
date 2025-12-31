@@ -26,6 +26,10 @@ jobs:
     name: Configure AWS & Setup Terraform
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write  # Required for OIDC authentication
+      contents: read   # Required for checkout
+
     outputs:
       terraform_version: ${{ steps.setup-tf.outputs.terraform-version }}
 
