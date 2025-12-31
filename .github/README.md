@@ -65,15 +65,29 @@ aws iam update-assume-role-policy \
   --profile sandbox
 ```
 
-### 3. Configure GitHub Environment Secret
+### 3. Configure GitHub Repository Secrets
 
-Set `AWS_ROLE_ARN` for sandbox environment:
+Set environment-specific role ARNs at repository level:
 
 ```bash
-gh secret set AWS_ROLE_ARN \
-  --env sandbox \
-  --body "arn:aws:iam::645275603781:role/TerraformRole"
+# Sandbox
+gh secret set AWS_ROLE_ARN_SANDBOX \
+  --body "arn:aws:iam::645275603781:role/terraform"
+
+# Staging
+gh secret set AWS_ROLE_ARN_STAGING \
+  --body "arn:aws:iam::208318252599:role/terraform"
+
+# UAT
+gh secret set AWS_ROLE_ARN_UAT \
+  --body "arn:aws:iam::<account-id>:role/terraform"
+
+# Production
+gh secret set AWS_ROLE_ARN_PRODUCTION \
+  --body "arn:aws:iam::<account-id>:role/terraform"
 ```
+
+**Note:** Repository-level secrets allow terraform plan validation on PRs without requiring environment approval gates. Workflow selects correct role based on target environment.
 
 ## Verification
 
@@ -90,11 +104,11 @@ Check workflow logs for successful AWS authentication without access key errors.
 
 Repeat for remaining environments:
 
-- **staging**: Account TBD
+- **staging**: Account 208318252599
 - **uat**: Account TBD
 - **production**: Account TBD
 
 Each requires:
 1. OIDC provider creation in target account
-2. TerraformRole trust policy update
-3. GitHub environment secret configuration
+2. `terraform` role trust policy update
+3. GitHub repository secret (`AWS_ROLE_ARN_<ENV>`)

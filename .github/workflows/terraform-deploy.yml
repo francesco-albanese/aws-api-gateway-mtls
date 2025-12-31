@@ -43,13 +43,36 @@ jobs:
             echo "environment=sandbox" >> $GITHUB_OUTPUT
           fi
 
+      - name: Select AWS Role ARN
+        id: select-role
+        run: |
+          ENV="${{ steps.set-env.outputs.environment }}"
+          case "$ENV" in
+            sandbox)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
+              ;;
+            uat)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Error: Unknown environment $ENV"
+              exit 1
+              ;;
+          esac
+
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
@@ -109,10 +132,33 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4
 
+      - name: Select AWS Role ARN
+        id: select-role
+        run: |
+          ENV="${{ needs.terraform-plan.outputs.environment }}"
+          case "$ENV" in
+            sandbox)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
+              ;;
+            uat)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Error: Unknown environment $ENV"
+              exit 1
+              ;;
+          esac
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
