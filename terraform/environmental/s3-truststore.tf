@@ -6,7 +6,7 @@ locals {
 }
 
 resource "aws_s3_bucket" "mtls_truststore" {
-  bucket_prefix = "${var.account_name}-mtls-truststore-"
+  bucket = "${var.account_name}-mtls-truststore-${var.account_id}"
 
   tags = {
     Name    = "${var.account_name}-mtls-truststore"
