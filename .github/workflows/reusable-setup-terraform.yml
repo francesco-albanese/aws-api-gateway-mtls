@@ -1,0 +1,43 @@
+name: Setup Terraform
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Environment to deploy to (sandbox/staging/uat/production)'
+        required: true
+        type: string
+      aws_region:
+        description: 'AWS region'
+        required: false
+        type: string
+        default: 'eu-west-2'
+    secrets:
+      AWS_ROLE_ARN:
+        description: 'AWS IAM role ARN for OIDC authentication'
+        required: true
+    outputs:
+      terraform_version:
+        description: 'Terraform version used'
+        value: ${{ jobs.setup.outputs.terraform_version }}
+
+jobs:
+  setup:
+    name: Configure AWS & Setup Terraform
+    runs-on: ubuntu-latest
+
+    outputs:
+      terraform_version: ${{ steps.setup-tf.outputs.terraform-version }}
+
+    steps:
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Setup Terraform
+        id: setup-tf
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: '1.13.4'
