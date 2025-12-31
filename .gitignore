@@ -108,3 +108,4 @@ override.tf.json
 *.swo
 *~
 .DS_Store
+plans/
