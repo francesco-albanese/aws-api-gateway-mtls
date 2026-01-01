@@ -19,9 +19,3 @@ variable "project_name" {
   type        = string
   default     = "aws-api-gateway-mtls"
 }
-
-variable "skip_provider_assume_role" {
-  description = "Skip provider assume_role (set to true when using GitHub OIDC)"
-  type        = bool
-  default     = false
-}

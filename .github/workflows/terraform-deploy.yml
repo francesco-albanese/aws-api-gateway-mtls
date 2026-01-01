@@ -98,7 +98,7 @@ jobs:
           ACCOUNT: ${{ steps.set-env.outputs.environment }}
         run: |
           set +e
-          make environmental-plan ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS='-var="skip_provider_assume_role=true"'
+          make environmental-plan ACCOUNT=${{ env.ACCOUNT }}
           exitcode=$?
           echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
           exit $exitcode
@@ -176,4 +176,4 @@ jobs:
         env:
           AWS_PROFILE: ""
           ACCOUNT: ${{ needs.terraform-plan.outputs.environment }}
-        run: make environmental-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS='-auto-approve -var="skip_provider_assume_role=true"'
+        run: make environmental-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS='-auto-approve'
