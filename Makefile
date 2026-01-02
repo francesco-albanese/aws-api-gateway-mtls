@@ -2,7 +2,7 @@ SHELL := /bin/bash
 
 .DEFAULT_GOAL := help
 
-PROJECT_NAME ?= aws-api-gateway-mtls
+PROJECT_NAME ?= apigw-mtls
 ACCOUNT ?= sandbox
 AWS_PROFILE ?= awsclifranco-admin
 terraform = AWS_PROFILE=$(AWS_PROFILE) terraform
