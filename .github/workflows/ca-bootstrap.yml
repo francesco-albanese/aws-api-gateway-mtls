@@ -151,17 +151,17 @@ jobs:
       - name: Terraform Init
         env:
           AWS_PROFILE: ""
-        run: make environmental-init ACCOUNT=${{ env.ACCOUNT }}
+        run: make certificate-bootstrap-init ACCOUNT=${{ env.ACCOUNT }}
 
       - name: Terraform Plan
         env:
           AWS_PROFILE: ""
-        run: make environmental-plan ACCOUNT=${{ env.ACCOUNT }}
+        run: make certificate-bootstrap-plan ACCOUNT=${{ env.ACCOUNT }}
 
       - name: Terraform Apply
         env:
           AWS_PROFILE: ""
-        run: make environmental-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="-auto-approve"
+        run: make certificate-bootstrap-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="-auto-approve"
 
       - name: Clean up local CA artifacts
         if: always()
