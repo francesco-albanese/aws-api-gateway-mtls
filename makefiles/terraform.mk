@@ -14,6 +14,9 @@ environmental_KEY := $(PROJECT_NAME)/environmental/$(ACCOUNT)
 environmental_ACCOUNT := $(ACCOUNT)
 environmental_FLAGS := -var-file=env/$(ACCOUNT).tfvars
 
+certificate-bootstrap_KEY := $(PROJECT_NAME)/certificate-bootstrap/$(ACCOUNT)
+certificate-bootstrap_FLAGS := -var-file=env/$(ACCOUNT).tfvars
+
 tf-setup: ## install tfenv and tflint (macOS: use brew install terraform instead)
 tf-setup:
 	@echo "Installing Terraform tooling..."

@@ -1,12 +1,7 @@
 name: Terraform Deploy
 
 on:
-  push:
-    branches:
-      - main
   pull_request:
-    branches:
-      - main
   workflow_dispatch:
     inputs:
       environment:
@@ -25,26 +20,59 @@ env:
   TERRAFORM_VERSION: 1.13.4
 
 jobs:
-  terraform:
-    name: Terraform Deploy
+  terraform-plan:
+    name: Terraform Plan
     runs-on: ubuntu-latest
 
-    # Set environment based on trigger
-    environment:
-      name: ${{ github.event.inputs.environment || 'sandbox' }}
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
 
-    env:
-      ACCOUNT: ${{ github.event.inputs.environment || 'sandbox' }}
+    outputs:
+      environment: ${{ steps.set-env.outputs.environment }}
+      exitcode: ${{ steps.plan.outputs.exitcode }}
 
     steps:
+      - name: Set environment
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          else
+            echo "environment=sandbox" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Select AWS Role ARN
+        id: select-role
+        run: |
+          ENV="${{ steps.set-env.outputs.environment }}"
+          case "$ENV" in
+            sandbox)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
+              ;;
+            uat)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Error: Unknown environment $ENV"
+              exit 1
+              ;;
+          esac
+
       - name: Checkout code
         uses: actions/checkout@v4
 
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          # OIDC authentication via GitHub Actions
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
@@ -55,6 +83,7 @@ jobs:
       - name: Terraform Init
         env:
           AWS_PROFILE: ""
+          ACCOUNT: ${{ steps.set-env.outputs.environment }}
         run: make environmental-init ACCOUNT=${{ env.ACCOUNT }}
 
       - name: Terraform Validate
@@ -63,15 +92,16 @@ jobs:
         run: make environmental-validate
 
       - name: Terraform Plan
+        id: plan
         env:
           AWS_PROFILE: ""
-        run: make environmental-plan ACCOUNT=${{ env.ACCOUNT }}
-
-      - name: Terraform Apply
-        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
-        env:
-          AWS_PROFILE: ""
-        run: make environmental-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="-auto-approve"
+          ACCOUNT: ${{ steps.set-env.outputs.environment }}
+        run: |
+          set +e
+          make environmental-plan ACCOUNT=${{ env.ACCOUNT }}
+          exitcode=$?
+          echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
+          exit $exitcode
 
       - name: Comment PR
         if: github.event_name == 'pull_request'
@@ -84,3 +114,66 @@ jobs:
               repo: context.repo.repo,
               body: '✅ Terraform plan completed. Review changes before merging.'
             })
+
+  terraform-apply:
+    name: Terraform Apply
+    needs: terraform-plan
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && needs.terraform-plan.outputs.exitcode == '0'
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    environment:
+      name: ${{ needs.terraform-plan.outputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Select AWS Role ARN
+        id: select-role
+        run: |
+          ENV="${{ needs.terraform-plan.outputs.environment }}"
+          case "$ENV" in
+            sandbox)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
+              ;;
+            uat)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Error: Unknown environment $ENV"
+              exit 1
+              ;;
+          esac
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        env:
+          AWS_PROFILE: ""
+          ACCOUNT: ${{ needs.terraform-plan.outputs.environment }}
+        run: make environmental-init ACCOUNT=${{ env.ACCOUNT }}
+
+      - name: Terraform Apply
+        env:
+          AWS_PROFILE: ""
+          ACCOUNT: ${{ needs.terraform-plan.outputs.environment }}
+        run: make environmental-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS='-auto-approve'

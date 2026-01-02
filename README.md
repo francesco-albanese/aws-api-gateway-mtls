@@ -11,6 +11,34 @@ The goal of this project is to create an AWS API Gateway HTTP regional endpoint 
 - the `authorizer` will receive the mTLS certificate metadata via request context to perform checks
 - The project will use a certificate chain mechanism for the mTLS, which is more secure. So we need to generate a Root CA
 
+## Terraform Deployment
+
+### PR Validation
+All PRs automatically run `terraform plan` for validation. Check workflow status before merging.
+
+### Manual Deployment
+```bash
+# Trigger via GitHub CLI
+gh workflow run terraform-deploy.yml -f environment=sandbox
+
+# Or via GitHub UI: Actions → Terraform Deploy → Run workflow
+```
+
+### Approval Process
+1. Trigger workflow (workflow_dispatch)
+2. Plan runs automatically
+3. GitHub notifies reviewers
+4. Reviewer approves in Actions tab
+5. Apply executes
+
+### Environment Setup
+Configure in Repository Settings → Environments:
+- Create: sandbox, staging, uat, production
+- Add required reviewers (1+)
+- Restrict to main branch
+
+## Certificate Chain Setup
+
 ```bash
 # Root CA private key
 openssl genrsa -out RootCA.key 4096

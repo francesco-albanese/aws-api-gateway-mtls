@@ -1,12 +1,9 @@
 provider "aws" {
   region = var.region
 
-  dynamic "assume_role" {
-    for_each = var.account_id != "" ? [1] : []
-    content {
-      role_arn = "arn:aws:iam::${var.account_id}:role/terraform"
-    }
-  }
+  # Auth handled externally:
+  # - Local dev: AWS profiles with assume_role in ~/.aws/config
+  # - GitHub OIDC: configure-aws-credentials sets env vars
 
   default_tags {
     tags = {

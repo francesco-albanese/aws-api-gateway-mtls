@@ -23,6 +23,10 @@ jobs:
     name: Bootstrap CA Infrastructure
     runs-on: ubuntu-latest
 
+    permissions:
+      id-token: write  # Required for OIDC authentication
+      contents: read   # Required for checkout
+
     environment:
       name: ${{ github.event.inputs.environment }}
 
@@ -83,13 +87,16 @@ jobs:
     with:
       environment: ${{ github.event.inputs.environment }}
       aws_region: eu-west-2
-    secrets:
-      AWS_ROLE_ARN: ${{ secrets.AWS_ROLE_ARN }}
+    secrets: inherit
 
   terraform-deploy:
     name: Deploy Infrastructure
     needs: setup-terraform
     runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write  # Required for OIDC authentication
+      contents: read   # Required for checkout
 
     environment:
       name: ${{ github.event.inputs.environment }}
@@ -107,10 +114,33 @@ jobs:
           name: ca-${{ env.ACCOUNT }}
           path: ca_operations/output/${{ env.ACCOUNT }}
 
+      - name: Select AWS Role ARN
+        id: select-role
+        run: |
+          ENV="${{ env.ACCOUNT }}"
+          case "$ENV" in
+            sandbox)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
+              ;;
+            uat)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Error: Unknown environment $ENV"
+              exit 1
+              ;;
+          esac
+
       - name: Configure AWS credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: ${{ secrets.AWS_ROLE_ARN }}
+          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
           aws-region: ${{ env.AWS_REGION }}
 
       - name: Setup Terraform
@@ -121,17 +151,17 @@ jobs:
       - name: Terraform Init
         env:
           AWS_PROFILE: ""
-        run: make environmental-init ACCOUNT=${{ env.ACCOUNT }}
+        run: make certificate-bootstrap-init ACCOUNT=${{ env.ACCOUNT }}
 
       - name: Terraform Plan
         env:
           AWS_PROFILE: ""
-        run: make environmental-plan ACCOUNT=${{ env.ACCOUNT }}
+        run: make certificate-bootstrap-plan ACCOUNT=${{ env.ACCOUNT }}
 
       - name: Terraform Apply
         env:
           AWS_PROFILE: ""
-        run: make environmental-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="-auto-approve"
+        run: make certificate-bootstrap-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="-auto-approve"
 
       - name: Clean up local CA artifacts
         if: always()
