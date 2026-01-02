@@ -17,5 +17,5 @@ variable "account_name" {
 variable "project_name" {
   type        = string
   description = "Project name for resource naming"
-  default     = "aws-api-gateway-mtls"
+  default     = "apigw-mtls"
 }

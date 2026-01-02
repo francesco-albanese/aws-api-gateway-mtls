@@ -17,5 +17,5 @@ variable "account_name" {
 variable "project_name" {
   description = "Project name for parameter store namespacing"
   type        = string
-  default     = "aws-api-gateway-mtls"
+  default     = "apigw-mtls"
 }
