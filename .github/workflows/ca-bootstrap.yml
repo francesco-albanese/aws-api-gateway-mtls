@@ -83,6 +83,9 @@ jobs:
   setup-terraform:
     name: Setup Terraform
     needs: bootstrap-ca
+    permissions:
+      id-token: write  # Required for AWS OIDC authentication
+      contents: read   # Required for reusable workflow
     uses: ./.github/workflows/reusable-setup-terraform.yml
     with:
       environment: ${{ github.event.inputs.environment }}
