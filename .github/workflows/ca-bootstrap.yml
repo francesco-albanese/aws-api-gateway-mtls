@@ -24,8 +24,8 @@ jobs:
     runs-on: ubuntu-latest
 
     permissions:
-      id-token: write  # Required for OIDC authentication
-      contents: read   # Required for checkout
+      id-token: write
+      contents: read
 
     environment:
       name: ${{ github.event.inputs.environment }}
