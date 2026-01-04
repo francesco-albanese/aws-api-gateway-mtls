@@ -40,7 +40,7 @@ uv run ca_operations/scripts/create_truststore.py \
 ```bash
 PYTHONPATH=/Users/francescoalbanese/Documents/Development/aws-api-gateway-mtls \
 uv run ca_operations/scripts/provision_client.py \
-  --client-id device-001 \
+  --client-id api-client-001 \
   --ca-dir ca_operations/output \
   --output-dir ca_operations/output/clients
 ```
@@ -61,7 +61,7 @@ ca_operations/output/
 ├── truststore/
 │   └── truststore.pem      # Chain bundle for S3 truststore
 └── clients/
-    └── device-001/
+    └── api-client-001/
         ├── client.key      # Client private key (distribute to client)
         ├── client.pem      # Client certificate
         ├── client.csr      # CSR
@@ -76,7 +76,7 @@ Formatted as hex with colons for readability and OpenSSL compatibility.
 ```json
 {
   "serialNumber": "3A:F2:B1:4C:...",  // UUID-based, hex-colon format
-  "CN": "device-001",
+  "CN": "api-client-001",
   "notBefore": "2025-12-13T10:00:00+00:00",
   "notAfter": "2027-01-12T10:00:00+00:00",
   "status": "active",
@@ -90,15 +90,15 @@ Formatted as hex with colons for readability and OpenSSL compatibility.
 ```bash
 # Verify certificate chain
 openssl verify -CAfile ca_operations/output/truststore/truststore.pem \
-  ca_operations/output/clients/device-001/client.pem
+  ca_operations/output/clients/api-client-001/client.pem
 
 # Verify CSR and cert subjects match
-openssl req -in ca_operations/output/clients/device-001/client.csr -noout -subject
-openssl x509 -in ca_operations/output/clients/device-001/client.pem -noout -subject
+openssl req -in ca_operations/output/clients/api-client-001/client.csr -noout -subject
+openssl x509 -in ca_operations/output/clients/api-client-001/client.pem -noout -subject
 
 # Verify CSR and cert public keys match (md5 hashes should match)
-openssl req -in ca_operations/output/clients/device-001/client.csr -noout -pubkey | md5
-openssl x509 -in ca_operations/output/clients/device-001/client.pem -noout -pubkey | md5
+openssl req -in ca_operations/output/clients/api-client-001/client.csr -noout -pubkey | md5
+openssl x509 -in ca_operations/output/clients/api-client-001/client.pem -noout -pubkey | md5
 ```
 
 ## Library Modules
