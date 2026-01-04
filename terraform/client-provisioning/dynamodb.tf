@@ -1,28 +1,12 @@
-resource "aws_dynamodb_table" "mtls_clients_metadata" {
-  name         = "mtls-clients-metadata"
-  billing_mode = "PAY_PER_REQUEST"
-  hash_key     = "serialNumber"
-
-  attribute {
-    name = "serialNumber"
-    type = "S"
-  }
-
-  ttl {
-    attribute_name = "ttl"
-    enabled        = true
-  }
-
-  tags = {
-    Name = "mtls-clients-metadata"
-  }
+data "aws_dynamodb_table" "mtls_clients_metadata" {
+  name = "mtls-clients-metadata"
 }
 
 resource "aws_dynamodb_table_item" "client_metadata" {
   for_each = local.clients
 
-  table_name = aws_dynamodb_table.mtls_clients_metadata.name
-  hash_key   = aws_dynamodb_table.mtls_clients_metadata.hash_key
+  table_name = data.aws_dynamodb_table.mtls_clients_metadata.name
+  hash_key   = data.aws_dynamodb_table.mtls_clients_metadata.hash_key
 
   item = jsonencode({
     serialNumber = { S = each.value.serialNumber }

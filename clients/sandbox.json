@@ -1,3 +1,6 @@
 {
-  "clients": []
+  "clients": [
+    { "client_id": "api-client-001" },
+    { "client_id": "api-client-002" }
+  ]
 }
