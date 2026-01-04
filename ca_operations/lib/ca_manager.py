@@ -18,6 +18,7 @@ from .cert_utils import (
 from .certificate_builder import CertificateBuilder
 from .config import CAConfig, DistinguishedName
 from .models import BootstrapResult, ClientCertResult
+from .ssm_client import SSMClient
 
 
 class CAManager:
@@ -232,7 +233,90 @@ class CAManager:
         cert_path.write_bytes(serialize_certificate(client_cert))
         csr_path.write_bytes(csr.public_bytes(serialization.Encoding.PEM))
 
-        metadata = extract_certificate_metadata(client_cert)
+        metadata = extract_certificate_metadata(client_cert, client_id=client_id)
+        metadata_path.write_text(json.dumps(metadata, indent=2))
+
+        serial_number = metadata["serialNumber"]
+        if not isinstance(serial_number, str):
+            raise ValueError("serial number must be string")
+
+        return ClientCertResult(
+            key_path=key_path,
+            cert_path=cert_path,
+            csr_path=csr_path,
+            metadata_path=metadata_path,
+            serial_number=serial_number,
+        )
+
+    def provision_client_certificate_from_ssm(
+        self,
+        client_id: str,
+        account: str,
+        ssm_client: SSMClient,
+        output_dir: Path,
+        project_name: str = "apigw-mtls",
+    ) -> ClientCertResult:
+        """Provision client certificate using Intermediate CA from SSM.
+
+        Fetches intermediate CA from SSM Parameter Store, generates client
+        certificate, and writes artifacts to filesystem for Terraform to upload.
+
+        Args:
+            client_id: Client identifier (used as CN in certificate)
+            account: Account/environment name (e.g., 'sandbox')
+            ssm_client: SSM client for fetching intermediate CA
+            output_dir: Output directory for client artifacts
+            project_name: Project name for SSM path prefix
+
+        Returns:
+            ClientCertResult with file paths and serial number
+
+        Raises:
+            ValueError: If intermediate CA not found in SSM
+        """
+        intermediate_key_pem, intermediate_cert_pem = ssm_client.get_intermediate_ca(
+            project_name=project_name, account=account
+        )
+
+        intermediate_key = deserialize_private_key(intermediate_key_pem)
+        intermediate_cert = deserialize_certificate(intermediate_cert_pem)
+
+        client_key = generate_private_key(self.config.key_size)
+        client_dn = DistinguishedName(
+            country=self.config.country,
+            state=self.config.state,
+            locality=self.config.locality,
+            organization=self.config.organization,
+            organizational_unit=self.config.organizational_unit,
+            common_name=client_id,
+        )
+
+        csr = (
+            x509.CertificateSigningRequestBuilder()
+            .subject_name(client_dn.to_x509_name())
+            .sign(client_key, hashes.SHA256())
+        )
+
+        client_cert = CertificateBuilder.build_client_certificate(
+            csr=csr,
+            issuer_cert=intermediate_cert,
+            issuer_key=intermediate_key,
+            validity_days=self.config.client_validity_days,
+        )
+
+        client_dir = output_dir / client_id
+        client_dir.mkdir(parents=True, exist_ok=True)
+
+        key_path = client_dir / "client.key"
+        cert_path = client_dir / "client.pem"
+        csr_path = client_dir / "client.csr"
+        metadata_path = client_dir / "metadata.json"
+
+        key_path.write_bytes(serialize_private_key(client_key))
+        cert_path.write_bytes(serialize_certificate(client_cert))
+        csr_path.write_bytes(csr.public_bytes(serialization.Encoding.PEM))
+
+        metadata = extract_certificate_metadata(client_cert, client_id=client_id)
         metadata_path.write_text(json.dumps(metadata, indent=2))
 
         serial_number = metadata["serialNumber"]

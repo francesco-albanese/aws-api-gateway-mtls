@@ -8,6 +8,7 @@ dependencies = []
 
 [dependency-groups]
 ca = [
+    "boto3>=1.42.20",
     "cryptography>=44.0.0",
     "python-json-logger>=2.0.7"
 ]

@@ -1,0 +1,266 @@
+name: Client Certificate Provision
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Environment to provision clients for"
+        required: true
+        type: choice
+        options:
+          - sandbox
+          - staging
+          - uat
+          - production
+        default: "sandbox"
+  push:
+    branches: [main]
+    paths:
+      - "clients/*.json"
+
+env:
+  AWS_REGION: eu-west-2
+  PYTHON_VERSION: "3.13.7"
+
+jobs:
+  detect-environment:
+    name: Detect Environment from Changed Files
+    runs-on: ubuntu-latest
+    outputs:
+      environment: ${{ steps.detect.outputs.environment }}
+      has_clients: ${{ steps.detect.outputs.has_clients }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Detect environment from changes
+        id: detect
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+            echo "has_clients=true" >> $GITHUB_OUTPUT
+          else
+            # Detect which clients/*.json changed
+            CHANGED_FILES=$(git diff --name-only HEAD~1 HEAD -- 'clients/*.json' || echo "")
+            if [ -z "$CHANGED_FILES" ]; then
+              echo "No client config changes detected"
+              echo "has_clients=false" >> $GITHUB_OUTPUT
+              exit 0
+            fi
+
+            # Extract environment from filename (e.g., clients/sandbox.json -> sandbox)
+            ENV=$(echo "$CHANGED_FILES" | head -n1 | sed 's|clients/||' | sed 's|\.json||')
+            echo "Detected environment: $ENV"
+            echo "environment=$ENV" >> $GITHUB_OUTPUT
+            echo "has_clients=true" >> $GITHUB_OUTPUT
+          fi
+
+  provision-certs:
+    name: Provision Client Certificates
+    needs: detect-environment
+    if: needs.detect-environment.outputs.has_clients == 'true'
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    environment:
+      name: ${{ needs.detect-environment.outputs.environment }}
+
+    env:
+      ACCOUNT: ${{ needs.detect-environment.outputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python & UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Select AWS Role ARN
+        id: select-role
+        run: |
+          ENV="${{ env.ACCOUNT }}"
+          case "$ENV" in
+            sandbox)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
+              ;;
+            uat)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Error: Unknown environment $ENV"
+              exit 1
+              ;;
+          esac
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Parse client config and provision certificates
+        run: |
+          CONFIG_FILE="clients/${{ env.ACCOUNT }}.json"
+          OUTPUT_DIR="ca_operations/output/${{ env.ACCOUNT }}/clients"
+          mkdir -p "$OUTPUT_DIR"
+
+          # Parse JSON with jq and extract client IDs
+          CLIENTS=$(jq -r '.clients[]?.client_id // empty' "$CONFIG_FILE" 2>/dev/null || echo "")
+
+          if [ -z "$CLIENTS" ]; then
+            echo "No clients configured in $CONFIG_FILE"
+            exit 0
+          fi
+
+          echo "Provisioning clients: $CLIENTS"
+
+          # Provision each client
+          for CLIENT_ID in $CLIENTS; do
+            echo "=== Provisioning $CLIENT_ID ==="
+            uv run --group ca python -m ca_operations.scripts.provision_client \
+              --environment "${{ env.ACCOUNT }}" \
+              --client-id "$CLIENT_ID" \
+              --skip-existing \
+              --output-dir "$OUTPUT_DIR"
+          done
+
+      - name: Verify client artifacts
+        run: |
+          OUTPUT_DIR="ca_operations/output/${{ env.ACCOUNT }}/clients"
+          if [ -d "$OUTPUT_DIR" ] && [ "$(ls -A $OUTPUT_DIR 2>/dev/null)" ]; then
+            echo "Generated client artifacts:"
+            find "$OUTPUT_DIR" -type f -name "*.pem" -o -name "*.key" -o -name "metadata.json" | head -20
+          else
+            echo "No client artifacts generated (all clients may already exist)"
+          fi
+
+      - name: Upload client artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: clients-${{ env.ACCOUNT }}
+          path: ca_operations/output/${{ env.ACCOUNT }}/clients
+          retention-days: 1
+          if-no-files-found: warn
+
+  terraform-deploy:
+    name: Deploy to AWS
+    needs: [detect-environment, provision-certs]
+    if: needs.detect-environment.outputs.has_clients == 'true'
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    environment:
+      name: ${{ needs.detect-environment.outputs.environment }}
+
+    env:
+      ACCOUNT: ${{ needs.detect-environment.outputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Download client artifacts
+        uses: actions/download-artifact@v4
+        with:
+          name: clients-${{ env.ACCOUNT }}
+          path: ca_operations/output/${{ env.ACCOUNT }}/clients
+
+      - name: Select AWS Role ARN
+        id: select-role
+        run: |
+          ENV="${{ env.ACCOUNT }}"
+          case "$ENV" in
+            sandbox)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
+              ;;
+            uat)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Error: Unknown environment $ENV"
+              exit 1
+              ;;
+          esac
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: "1.13.4"
+
+      - name: Check for artifacts
+        id: check-artifacts
+        run: |
+          OUTPUT_DIR="ca_operations/output/${{ env.ACCOUNT }}/clients"
+          if [ -d "$OUTPUT_DIR" ] && [ "$(ls -A $OUTPUT_DIR 2>/dev/null)" ]; then
+            echo "has_artifacts=true" >> $GITHUB_OUTPUT
+            echo "Found client artifacts to deploy"
+          else
+            echo "has_artifacts=false" >> $GITHUB_OUTPUT
+            echo "No client artifacts to deploy"
+          fi
+
+      - name: Terraform Init
+        if: steps.check-artifacts.outputs.has_artifacts == 'true'
+        env:
+          AWS_PROFILE: ""
+        run: make client-provisioning-init ACCOUNT=${{ env.ACCOUNT }}
+
+      - name: Terraform Plan
+        if: steps.check-artifacts.outputs.has_artifacts == 'true'
+        env:
+          AWS_PROFILE: ""
+        run: make client-provisioning-plan ACCOUNT=${{ env.ACCOUNT }}
+
+      - name: Terraform Apply
+        if: steps.check-artifacts.outputs.has_artifacts == 'true'
+        env:
+          AWS_PROFILE: ""
+        run: make client-provisioning-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="-auto-approve"
+
+      - name: Clean up local artifacts
+        if: always()
+        run: |
+          rm -rf ca_operations/output/${{ env.ACCOUNT }}
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "## Client Provisioning Complete ✅" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ env.ACCOUNT }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Provisioned Resources:" >> $GITHUB_STEP_SUMMARY
+          echo "- Client certificates stored in SSM Parameter Store" >> $GITHUB_STEP_SUMMARY
+          echo "- Client metadata stored in DynamoDB (mtls-clients-metadata)" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### SSM Paths:" >> $GITHUB_STEP_SUMMARY
+          echo "\`/apigw-mtls/${{ env.ACCOUNT }}/clients/{client_id}/private-key\`" >> $GITHUB_STEP_SUMMARY
+          echo "\`/apigw-mtls/${{ env.ACCOUNT }}/clients/{client_id}/certificate\`" >> $GITHUB_STEP_SUMMARY

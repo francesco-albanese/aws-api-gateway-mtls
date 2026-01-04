@@ -6,7 +6,12 @@ from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
-from .cert_utils import generate_serial_number
+from .cert_utils import (
+            extract_csr_public_key,
+            extract_csr_subject,
+            generate_serial_number,
+            validate_csr_signature,
+        )
 from .config import DistinguishedName
 
 
@@ -156,11 +161,6 @@ class CertificateBuilder:
         Raises:
             ValueError: If CSR signature is invalid
         """
-        from .cert_utils import (
-            extract_csr_public_key,
-            extract_csr_subject,
-            validate_csr_signature,
-        )
 
         if not validate_csr_signature(csr):
             raise ValueError("CSR signature validation failed")
