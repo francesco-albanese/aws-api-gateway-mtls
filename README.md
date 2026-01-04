@@ -80,7 +80,7 @@ create a CSR (certificate signing request) and sign it with the intermediate CA
 ```bash
 # Client CSR
 openssl req -new -key client.key -out client.csr \
-  -subj "/C=US/O=Portfolio/CN=device-001"
+  -subj "/C=US/O=Portfolio/CN=api-client-001"
 
 # Intermediate CA signs it
 openssl x509 -req -in client.csr \

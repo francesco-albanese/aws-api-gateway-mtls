@@ -26,11 +26,11 @@ ca-truststore: check-venv
 		--ca-dir "$$OUTPUT_DIR" \
 		--output "$$OUTPUT_DIR/truststore/truststore.pem"
 
-ca-provision-client: ## Provision client certificate (ACCOUNT=sandbox CLIENT_ID=device-001)
+ca-provision-client: ## Provision client certificate (ACCOUNT=sandbox CLIENT_ID=api-client-001)
 ca-provision-client: check-venv
 	@if [ -z "$(ACCOUNT)" ] || [ -z "$(CLIENT_ID)" ]; then \
 		echo "Error: ACCOUNT and CLIENT_ID required."; \
-		echo "Usage: make ca-provision-client ACCOUNT=sandbox CLIENT_ID=device-001"; \
+		echo "Usage: make ca-provision-client ACCOUNT=sandbox CLIENT_ID=api-client-001"; \
 		exit 1; \
 	fi
 	@echo "Provisioning client certificate: $(CLIENT_ID) for $(ACCOUNT)"
