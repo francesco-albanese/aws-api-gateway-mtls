@@ -69,17 +69,24 @@ def get_certificate_serial_hex(cert: x509.Certificate) -> str:
     return ":".join(serial_hex[i : i + 2] for i in range(0, len(serial_hex), 2))
 
 
-def extract_certificate_metadata(cert: x509.Certificate) -> dict[str, str | int]:
+def extract_certificate_metadata(
+    cert: x509.Certificate, client_id: str | None = None
+) -> dict[str, str | int]:
     """Extract certificate metadata for JSON serialization (DynamoDB import).
+
+    Args:
+        cert: X.509 certificate to extract metadata from
+        client_id: Optional client identifier (for client certs)
 
     Returns dict with:
         - serialNumber: hex with colons format
-        - CN: common name
+        - client_id: client identifier (if provided)
+        - clientName: common name from certificate
         - notBefore: ISO8601 timestamp
-        - notAfter: ISO8601 timestamp
+        - expiry: ISO8601 timestamp (certificate notAfter)
         - status: always 'active'
         - issuedAt: ISO8601 timestamp (current UTC time)
-        - ttl: unix timestamp (notAfter + 90 days)
+        - ttl: unix timestamp (expiry + 90 days for DynamoDB auto-delete)
     """
     cn = cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value
     if not isinstance(cn, str):
@@ -90,15 +97,20 @@ def extract_certificate_metadata(cert: x509.Certificate) -> dict[str, str | int]
     issued_at = datetime.now(timezone.utc)
     ttl_datetime = not_after + timedelta(days=90)
 
-    return {
+    metadata: dict[str, str | int] = {
         "serialNumber": get_certificate_serial_hex(cert),
-        "CN": cn,
+        "clientName": cn,
         "notBefore": not_before.isoformat(),
-        "notAfter": not_after.isoformat(),
+        "expiry": not_after.isoformat(),
         "status": "active",
         "issuedAt": issued_at.isoformat(),
         "ttl": int(ttl_datetime.timestamp()),
     }
+
+    if client_id is not None:
+        metadata["client_id"] = client_id
+
+    return metadata
 
 
 def create_truststore_bundle(
