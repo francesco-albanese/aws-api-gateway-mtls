@@ -1,5 +1,6 @@
 # Lambda function for health endpoint
 # Container image deployed via GitHub Actions, referenced by tag
+# ECR repository created separately in terraform/ecr stack
 
 variable "health_lambda_image_tag" {
   description = "Image tag for health Lambda (git SHA or 'latest')"
@@ -7,11 +8,15 @@ variable "health_lambda_image_tag" {
   default     = "latest"
 }
 
+data "aws_ecr_repository" "health_lambda" {
+  name = "mtls-api-health-lambda"
+}
+
 resource "aws_lambda_function" "health" {
   function_name = "mtls-api-health"
   role          = aws_iam_role.lambda_exec.arn
   package_type  = "Image"
-  image_uri     = "${aws_ecr_repository.health_lambda.repository_url}:${var.health_lambda_image_tag}"
+  image_uri     = "${data.aws_ecr_repository.health_lambda.repository_url}:${var.health_lambda_image_tag}"
   architectures = ["arm64"]
   timeout       = 30
   memory_size   = 128

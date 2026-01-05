@@ -13,6 +13,25 @@ The goal of this project is to create an AWS API Gateway HTTP regional endpoint 
 
 ## Terraform Deployment
 
+### Deployment Order
+
+**IMPORTANT:** Deploy stacks in this order:
+
+1. **ECR** (once per environment) - Creates container registries for Lambda images
+2. **Lambda Build** - Pushes Docker images to ECR
+3. **Environmental** - Creates API Gateway, Lambda functions, etc.
+
+```bash
+# 1. Deploy ECR first (creates repositories)
+gh workflow run ecr-deploy.yml -f environment=sandbox
+
+# 2. Build and push Lambda images
+gh workflow run lambda-build.yml -f environment=sandbox
+
+# 3. Deploy infrastructure
+gh workflow run terraform-deploy.yml -f environment=sandbox
+```
+
 ### PR Validation
 All PRs automatically run `terraform plan` for validation. Check workflow status before merging.
 

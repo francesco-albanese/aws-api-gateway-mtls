@@ -1,0 +1,81 @@
+name: ECR Deploy
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment"
+        required: true
+        type: choice
+        options:
+          - sandbox
+          - staging
+          - uat
+          - production
+        default: "sandbox"
+
+env:
+  AWS_REGION: eu-west-2
+  TERRAFORM_VERSION: 1.13.4
+
+jobs:
+  ecr-deploy:
+    name: Deploy ECR (${{ inputs.environment }})
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    environment:
+      name: ${{ inputs.environment }}
+
+    steps:
+      - name: Select AWS Role ARN
+        id: select-role
+        run: |
+          ENV="${{ inputs.environment }}"
+          case "$ENV" in
+            sandbox)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
+              ;;
+            uat)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Error: Unknown environment $ENV"
+              exit 1
+              ;;
+          esac
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Setup Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: ${{ env.TERRAFORM_VERSION }}
+
+      - name: Terraform Init
+        env:
+          AWS_PROFILE: ""
+          ACCOUNT: ${{ inputs.environment }}
+        run: make ecr-init ACCOUNT=${{ env.ACCOUNT }}
+
+      - name: Terraform Apply
+        env:
+          AWS_PROFILE: ""
+          ACCOUNT: ${{ inputs.environment }}
+        run: make ecr-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS='-auto-approve'
