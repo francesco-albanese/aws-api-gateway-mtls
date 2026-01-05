@@ -82,34 +82,15 @@ jobs:
         with:
           python-version: ${{ env.PYTHON_VERSION }}
 
-      - name: Select AWS Role ARN
-        id: select-role
-        run: |
-          ENV="${{ env.ACCOUNT }}"
-          case "$ENV" in
-            sandbox)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
-              ;;
-            staging)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
-              ;;
-            uat)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
-              ;;
-            production)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
-              ;;
-            *)
-              echo "Error: Unknown environment $ENV"
-              exit 1
-              ;;
-          esac
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS
+        uses: ./.github/actions/configure-aws-env
         with:
-          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
-          aws-region: ${{ env.AWS_REGION }}
+          environment: ${{ env.ACCOUNT }}
+          aws_region: ${{ env.AWS_REGION }}
+          role_arn_sandbox: ${{ secrets.AWS_ROLE_ARN_SANDBOX }}
+          role_arn_staging: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          role_arn_uat: ${{ secrets.AWS_ROLE_ARN_UAT }}
+          role_arn_production: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}
 
       - name: Parse client config and provision certificates
         run: |
@@ -181,39 +162,16 @@ jobs:
           name: clients-${{ env.ACCOUNT }}
           path: ca_operations/output/${{ env.ACCOUNT }}/clients
 
-      - name: Select AWS Role ARN
-        id: select-role
-        run: |
-          ENV="${{ env.ACCOUNT }}"
-          case "$ENV" in
-            sandbox)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
-              ;;
-            staging)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
-              ;;
-            uat)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
-              ;;
-            production)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
-              ;;
-            *)
-              echo "Error: Unknown environment $ENV"
-              exit 1
-              ;;
-          esac
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS & Terraform
+        uses: ./.github/actions/configure-aws-env
         with:
-          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: "1.13.4"
+          environment: ${{ env.ACCOUNT }}
+          aws_region: ${{ env.AWS_REGION }}
+          role_arn_sandbox: ${{ secrets.AWS_ROLE_ARN_SANDBOX }}
+          role_arn_staging: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          role_arn_uat: ${{ secrets.AWS_ROLE_ARN_UAT }}
+          role_arn_production: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}
+          setup_terraform: 'true'
 
       - name: Check for artifacts
         id: check-artifacts

@@ -16,7 +16,6 @@ on:
 
 env:
   AWS_REGION: eu-west-2
-  TERRAFORM_VERSION: 1.13.4
 
 jobs:
   ecr-deploy:
@@ -31,42 +30,19 @@ jobs:
       name: ${{ inputs.environment }}
 
     steps:
-      - name: Select AWS Role ARN
-        id: select-role
-        run: |
-          ENV="${{ inputs.environment }}"
-          case "$ENV" in
-            sandbox)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
-              ;;
-            staging)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
-              ;;
-            uat)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
-              ;;
-            production)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
-              ;;
-            *)
-              echo "Error: Unknown environment $ENV"
-              exit 1
-              ;;
-          esac
-
       - name: Checkout code
         uses: actions/checkout@v4
 
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS & Terraform
+        uses: ./.github/actions/configure-aws-env
         with:
-          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: ${{ env.TERRAFORM_VERSION }}
+          environment: ${{ inputs.environment }}
+          aws_region: ${{ env.AWS_REGION }}
+          role_arn_sandbox: ${{ secrets.AWS_ROLE_ARN_SANDBOX }}
+          role_arn_staging: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          role_arn_uat: ${{ secrets.AWS_ROLE_ARN_UAT }}
+          role_arn_production: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}
+          setup_terraform: 'true'
 
       - name: Terraform Init
         env:

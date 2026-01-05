@@ -1,0 +1,98 @@
+name: 'Configure AWS Environment'
+description: 'Select AWS role based on environment, configure credentials, optionally setup Terraform'
+
+inputs:
+  environment:
+    description: 'Environment (sandbox/staging/uat/production)'
+    required: true
+  aws_region:
+    description: 'AWS region'
+    required: false
+    default: 'eu-west-2'
+  role_arn_sandbox:
+    description: 'AWS Role ARN for sandbox'
+    required: true
+  role_arn_staging:
+    description: 'AWS Role ARN for staging'
+    required: true
+  role_arn_uat:
+    description: 'AWS Role ARN for uat'
+    required: true
+  role_arn_production:
+    description: 'AWS Role ARN for production'
+    required: true
+  ecr_registry_sandbox:
+    description: 'ECR registry for sandbox (optional)'
+    required: false
+    default: ''
+  ecr_registry_staging:
+    description: 'ECR registry for staging (optional)'
+    required: false
+    default: ''
+  ecr_registry_uat:
+    description: 'ECR registry for uat (optional)'
+    required: false
+    default: ''
+  ecr_registry_production:
+    description: 'ECR registry for production (optional)'
+    required: false
+    default: ''
+  setup_terraform:
+    description: 'Whether to setup Terraform'
+    required: false
+    default: 'false'
+  terraform_version:
+    description: 'Terraform version to install'
+    required: false
+    default: '1.14.3'
+
+outputs:
+  role_arn:
+    description: 'Selected AWS Role ARN'
+    value: ${{ steps.select-role.outputs.role_arn }}
+  ecr_registry:
+    description: 'Selected ECR registry'
+    value: ${{ steps.select-role.outputs.ecr_registry }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Select AWS Role ARN
+      id: select-role
+      shell: bash
+      run: |
+        ENV="${{ inputs.environment }}"
+        case "$ENV" in
+          sandbox)
+            echo "role_arn=${{ inputs.role_arn_sandbox }}" >> $GITHUB_OUTPUT
+            echo "ecr_registry=${{ inputs.ecr_registry_sandbox }}" >> $GITHUB_OUTPUT
+            ;;
+          staging)
+            echo "role_arn=${{ inputs.role_arn_staging }}" >> $GITHUB_OUTPUT
+            echo "ecr_registry=${{ inputs.ecr_registry_staging }}" >> $GITHUB_OUTPUT
+            ;;
+          uat)
+            echo "role_arn=${{ inputs.role_arn_uat }}" >> $GITHUB_OUTPUT
+            echo "ecr_registry=${{ inputs.ecr_registry_uat }}" >> $GITHUB_OUTPUT
+            ;;
+          production)
+            echo "role_arn=${{ inputs.role_arn_production }}" >> $GITHUB_OUTPUT
+            echo "ecr_registry=${{ inputs.ecr_registry_production }}" >> $GITHUB_OUTPUT
+            ;;
+          *)
+            echo "Error: Unknown environment $ENV"
+            exit 1
+            ;;
+        esac
+
+    - name: Configure AWS credentials
+      uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ steps.select-role.outputs.role_arn }}
+        aws-region: ${{ inputs.aws_region }}
+
+    - name: Setup Terraform
+      if: inputs.setup_terraform == 'true'
+      uses: hashicorp/setup-terraform@v3
+      with:
+        terraform_version: ${{ inputs.terraform_version }}

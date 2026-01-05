@@ -80,26 +80,14 @@ jobs:
           path: ca_operations/output/${{ env.ACCOUNT }}
           retention-days: 1
 
-  setup-terraform:
-    name: Setup Terraform
-    needs: bootstrap-ca
-    permissions:
-      id-token: write  # Required for AWS OIDC authentication
-      contents: read   # Required for reusable workflow
-    uses: ./.github/workflows/reusable-setup-terraform.yml
-    with:
-      environment: ${{ github.event.inputs.environment }}
-      aws_region: eu-west-2
-    secrets: inherit
-
   terraform-deploy:
     name: Deploy Infrastructure
-    needs: setup-terraform
+    needs: bootstrap-ca
     runs-on: ubuntu-latest
 
     permissions:
-      id-token: write  # Required for OIDC authentication
-      contents: read   # Required for checkout
+      id-token: write
+      contents: read
 
     environment:
       name: ${{ github.event.inputs.environment }}
@@ -117,39 +105,16 @@ jobs:
           name: ca-${{ env.ACCOUNT }}
           path: ca_operations/output/${{ env.ACCOUNT }}
 
-      - name: Select AWS Role ARN
-        id: select-role
-        run: |
-          ENV="${{ env.ACCOUNT }}"
-          case "$ENV" in
-            sandbox)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
-              ;;
-            staging)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
-              ;;
-            uat)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
-              ;;
-            production)
-              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
-              ;;
-            *)
-              echo "Error: Unknown environment $ENV"
-              exit 1
-              ;;
-          esac
-
-      - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+      - name: Configure AWS & Terraform
+        uses: ./.github/actions/configure-aws-env
         with:
-          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
-          aws-region: ${{ env.AWS_REGION }}
-
-      - name: Setup Terraform
-        uses: hashicorp/setup-terraform@v3
-        with:
-          terraform_version: '1.13.4'
+          environment: ${{ env.ACCOUNT }}
+          aws_region: ${{ env.AWS_REGION }}
+          role_arn_sandbox: ${{ secrets.AWS_ROLE_ARN_SANDBOX }}
+          role_arn_staging: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          role_arn_uat: ${{ secrets.AWS_ROLE_ARN_UAT }}
+          role_arn_production: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}
+          setup_terraform: 'true'
 
       - name: Terraform Init
         env:
