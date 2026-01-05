@@ -14,6 +14,9 @@ environmental_KEY := $(PROJECT_NAME)/environmental/$(ACCOUNT)
 environmental_ACCOUNT := $(ACCOUNT)
 environmental_FLAGS := -var-file=env/$(ACCOUNT).tfvars
 
+ecr_KEY := $(PROJECT_NAME)/ecr/$(ACCOUNT)
+ecr_FLAGS := -var-file=env/$(ACCOUNT).tfvars
+
 certificate-bootstrap_KEY := $(PROJECT_NAME)/certificate-bootstrap/$(ACCOUNT)
 certificate-bootstrap_FLAGS := -var-file=env/$(ACCOUNT).tfvars
 
