@@ -1,47 +1,20 @@
 # Lambda function for health endpoint
-# Minimal function to test mTLS - returns client cert info when available
+# Container image deployed via GitHub Actions, referenced by tag
 
-data "archive_file" "health_lambda" {
-  type        = "zip"
-  output_path = "${path.module}/lambda/health.zip"
-
-  source {
-    content  = <<-EOF
-      import json
-
-      def handler(event, context):
-          # Extract mTLS client certificate info from request context
-          request_context = event.get("requestContext", {})
-          authentication = request_context.get("authentication", {})
-          client_cert = authentication.get("clientCert", {})
-
-          response_body = {
-              "status": "healthy",
-              "mtls": {
-                  "enabled": bool(client_cert),
-                  "clientCN": client_cert.get("subjectDN", "").split("CN=")[-1].split(",")[0] if client_cert else None,
-                  "serialNumber": client_cert.get("serialNumber"),
-                  "validity": client_cert.get("validity", {})
-              }
-          }
-
-          return {
-              "statusCode": 200,
-              "headers": {"Content-Type": "application/json"},
-              "body": json.dumps(response_body)
-          }
-    EOF
-    filename = "index.py"
-  }
+variable "health_lambda_image_tag" {
+  description = "Image tag for health Lambda (git SHA or 'latest')"
+  type        = string
+  default     = "latest"
 }
 
 resource "aws_lambda_function" "health" {
-  function_name    = "mtls-api-health"
-  role             = aws_iam_role.lambda_exec.arn
-  handler          = "index.handler"
-  runtime          = "python3.12"
-  filename         = data.archive_file.health_lambda.output_path
-  source_code_hash = data.archive_file.health_lambda.output_base64sha256
+  function_name = "mtls-api-health"
+  role          = aws_iam_role.lambda_exec.arn
+  package_type  = "Image"
+  image_uri     = "${aws_ecr_repository.health_lambda.repository_url}:${var.health_lambda_image_tag}"
+  architectures = ["arm64"]
+  timeout       = 30
+  memory_size   = 128
 
   tags = {
     Name = "mtls-api-health"

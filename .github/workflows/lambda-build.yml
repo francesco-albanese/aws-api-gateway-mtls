@@ -1,0 +1,122 @@
+name: Build Lambda Images
+
+on:
+  push:
+    branches: [main]
+    paths: ['lambdas/**']
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: choice
+        options:
+          - sandbox
+          - staging
+          - uat
+          - production
+        default: 'sandbox'
+
+env:
+  AWS_REGION: eu-west-2
+
+jobs:
+  detect-lambdas:
+    name: Detect Changed Lambdas
+    runs-on: ubuntu-latest
+    outputs:
+      lambdas: ${{ steps.detect.outputs.lambdas }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Detect Lambda directories
+        id: detect
+        run: |
+          # Find all Lambda directories with Dockerfile
+          lambdas=$(find lambdas -maxdepth 2 -name Dockerfile -exec dirname {} \; | xargs -I {} basename {} | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          echo "lambdas=$lambdas" >> $GITHUB_OUTPUT
+          echo "Detected Lambdas: $lambdas"
+
+  build-and-push:
+    name: Build ${{ matrix.lambda }}
+    needs: detect-lambdas
+    runs-on: ubuntu-latest
+    if: needs.detect-lambdas.outputs.lambdas != '[]'
+
+    strategy:
+      matrix:
+        lambda: ${{ fromJson(needs.detect-lambdas.outputs.lambdas) }}
+
+    permissions:
+      id-token: write
+      contents: read
+
+    steps:
+      - name: Set environment
+        id: set-env
+        run: |
+          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          else
+            echo "environment=sandbox" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Select AWS Role ARN
+        id: select-role
+        run: |
+          ENV="${{ steps.set-env.outputs.environment }}"
+          case "$ENV" in
+            sandbox)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_SANDBOX }}" >> $GITHUB_OUTPUT
+              echo "ecr_registry=${{ secrets.ECR_REGISTRY_SANDBOX }}" >> $GITHUB_OUTPUT
+              ;;
+            staging)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_STAGING }}" >> $GITHUB_OUTPUT
+              echo "ecr_registry=${{ secrets.ECR_REGISTRY_STAGING }}" >> $GITHUB_OUTPUT
+              ;;
+            uat)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_UAT }}" >> $GITHUB_OUTPUT
+              echo "ecr_registry=${{ secrets.ECR_REGISTRY_UAT }}" >> $GITHUB_OUTPUT
+              ;;
+            production)
+              echo "role_arn=${{ secrets.AWS_ROLE_ARN_PRODUCTION }}" >> $GITHUB_OUTPUT
+              echo "ecr_registry=${{ secrets.ECR_REGISTRY_PRODUCTION }}" >> $GITHUB_OUTPUT
+              ;;
+            *)
+              echo "Error: Unknown environment $ENV"
+              exit 1
+              ;;
+          esac
+
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ steps.select-role.outputs.role_arn }}
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Set up QEMU for ARM64
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Build and push ${{ matrix.lambda }} Lambda
+        uses: docker/build-push-action@v6
+        with:
+          context: lambdas/${{ matrix.lambda }}
+          platforms: linux/arm64
+          push: true
+          cache-from: type=gha,scope=${{ matrix.lambda }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.lambda }}
+          tags: |
+            ${{ steps.select-role.outputs.ecr_registry }}/mtls-api-${{ matrix.lambda }}-lambda:${{ github.sha }}
+            ${{ steps.select-role.outputs.ecr_registry }}/mtls-api-${{ matrix.lambda }}-lambda:latest

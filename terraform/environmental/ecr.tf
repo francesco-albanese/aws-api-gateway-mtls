@@ -1,0 +1,32 @@
+# ECR repository for Lambda container images
+
+resource "aws_ecr_repository" "health_lambda" {
+  name                 = "mtls-api-health-lambda"
+  image_tag_mutability = "IMMUTABLE"
+  force_delete         = true
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name = "mtls-api-health-lambda"
+  }
+}
+
+resource "aws_ecr_lifecycle_policy" "health_lambda" {
+  repository = aws_ecr_repository.health_lambda.name
+
+  policy = jsonencode({
+    rules = [{
+      rulePriority = 1
+      description  = "Keep last 5 images"
+      selection = {
+        tagStatus   = "any"
+        countType   = "imageCountMoreThan"
+        countNumber = 5
+      }
+      action = { type = "expire" }
+    }]
+  })
+}
