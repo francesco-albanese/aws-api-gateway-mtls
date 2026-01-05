@@ -97,6 +97,7 @@ jobs:
           context: lambdas/${{ matrix.lambda }}
           platforms: linux/arm64
           push: true
+          provenance: false
           cache-from: type=gha,scope=${{ matrix.lambda }}
           cache-to: type=gha,mode=max,scope=${{ matrix.lambda }}
           tags: |
