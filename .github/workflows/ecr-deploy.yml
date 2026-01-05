@@ -74,6 +74,12 @@ jobs:
           ACCOUNT: ${{ inputs.environment }}
         run: make ecr-init ACCOUNT=${{ env.ACCOUNT }}
 
+      - name: Terraform Plan
+        env:
+          AWS_PROFILE: ""
+          ACCOUNT: ${{ inputs.environment }}
+        run: make ecr-plan ACCOUNT=${{ env.ACCOUNT }}
+
       - name: Terraform Apply
         env:
           AWS_PROFILE: ""
