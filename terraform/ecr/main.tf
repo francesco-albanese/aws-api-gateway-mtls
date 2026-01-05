@@ -4,7 +4,7 @@
 resource "aws_ecr_repository" "health_lambda" {
   name                 = "${var.project_name}-health-lambda"
   image_tag_mutability = "MUTABLE"
-  force_delete         = true
+  force_delete         = false
 
   image_scanning_configuration {
     scan_on_push = true
@@ -12,6 +12,10 @@ resource "aws_ecr_repository" "health_lambda" {
 
   tags = {
     Name = "${var.project_name}-health-lambda"
+  }
+
+  lifecycle {
+    prevent_destroy = true
   }
 }
 
