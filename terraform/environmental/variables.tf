@@ -30,3 +30,14 @@ variable "api_subdomain" {
   type        = string
   default     = "api"
 }
+
+variable "route53_account_id" {
+  description = "AWS account ID hosting Route53 zone (shared-services)"
+  type        = string
+}
+
+variable "route53_role_name" {
+  description = "IAM role name for Route53 cross-account access"
+  type        = string
+  default     = "terraform"
+}

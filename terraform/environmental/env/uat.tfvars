@@ -4,5 +4,6 @@ account_id   = "393766496546"
 account_name = "uat"
 
 # Domain Configuration
-domain_name   = "REPLACE_WITH_YOUR_DOMAIN"
-api_subdomain = "api-uat"
+domain_name        = "REPLACE_WITH_YOUR_DOMAIN"
+api_subdomain      = "api-uat"
+route53_account_id = "088994864650"

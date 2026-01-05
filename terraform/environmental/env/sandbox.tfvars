@@ -4,5 +4,6 @@ account_id   = "645275603781"
 account_name = "sandbox"
 
 # Domain Configuration
-domain_name   = "REPLACE_WITH_YOUR_DOMAIN"
-api_subdomain = "api-sandbox"
+domain_name        = "francescoalbanese.dev"
+api_subdomain      = "api-sandbox"
+route53_account_id = "088994864650"
