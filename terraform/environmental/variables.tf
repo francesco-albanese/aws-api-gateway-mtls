@@ -19,3 +19,14 @@ variable "project_name" {
   type        = string
   default     = "apigw-mtls"
 }
+
+variable "domain_name" {
+  description = "Base domain name (e.g., example.com)"
+  type        = string
+}
+
+variable "api_subdomain" {
+  description = "Subdomain for API (e.g., api-sandbox, api-staging, api)"
+  type        = string
+  default     = "api"
+}

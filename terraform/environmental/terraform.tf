@@ -6,6 +6,10 @@ terraform {
       source  = "hashicorp/aws"
       version = ">= 6.18.0"
     }
+    archive = {
+      source  = "hashicorp/archive"
+      version = ">= 2.0.0"
+    }
   }
 
   # Backend configuration provided via -backend-config=../../state.conf

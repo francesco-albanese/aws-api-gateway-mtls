@@ -2,3 +2,7 @@
 region       = "eu-west-2"
 account_id   = "645275603781"
 account_name = "sandbox"
+
+# Domain Configuration
+domain_name   = "REPLACE_WITH_YOUR_DOMAIN"
+api_subdomain = "api-sandbox"
