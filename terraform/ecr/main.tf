@@ -1,8 +1,9 @@
-# ECR repository for Lambda container images
+# ECR repositories for Lambda container images
+# Deploy this stack BEFORE environmental stack
 
 resource "aws_ecr_repository" "health_lambda" {
-  name                 = "mtls-api-health-lambda"
-  image_tag_mutability = "IMMUTABLE"
+  name                 = "${var.project_name}-health-lambda"
+  image_tag_mutability = "MUTABLE"
   force_delete         = true
 
   image_scanning_configuration {
@@ -10,7 +11,7 @@ resource "aws_ecr_repository" "health_lambda" {
   }
 
   tags = {
-    Name = "mtls-api-health-lambda"
+    Name = "${var.project_name}-health-lambda"
   }
 }
 

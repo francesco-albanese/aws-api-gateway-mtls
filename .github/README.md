@@ -80,14 +80,53 @@ gh secret set AWS_ROLE_ARN_STAGING \
 
 # UAT
 gh secret set AWS_ROLE_ARN_UAT \
-  --body "arn:aws:iam::<account-id>:role/terraform"
+  --body "arn:aws:iam::393766496546:role/terraform"
 
 # Production
 gh secret set AWS_ROLE_ARN_PRODUCTION \
-  --body "arn:aws:iam::<account-id>:role/terraform"
+  --body "arn:aws:iam::165835313193:role/terraform"
 ```
 
 **Note:** Repository-level secrets allow terraform plan validation on PRs without requiring environment approval gates. Workflow selects correct role based on target environment.
+
+### 4. Configure ECR Registry Secrets
+
+Required for Lambda container image builds:
+
+```bash
+gh secret set ECR_REGISTRY_SANDBOX \
+  --body "645275603781.dkr.ecr.eu-west-2.amazonaws.com"
+
+gh secret set ECR_REGISTRY_STAGING \
+  --body "208318252599.dkr.ecr.eu-west-2.amazonaws.com"
+
+gh secret set ECR_REGISTRY_UAT \
+  --body "393766496546.dkr.ecr.eu-west-2.amazonaws.com"
+
+gh secret set ECR_REGISTRY_PRODUCTION \
+  --body "165835313193.dkr.ecr.eu-west-2.amazonaws.com"
+```
+
+## Terraform Deployment Flow
+
+Deploy stacks in order:
+
+```
+ECR → Lambda Build → Environmental
+```
+
+| Step | Workflow | Purpose |
+|------|----------|---------|
+| 1 | `ecr-deploy.yml` | Create ECR repositories (once per env) |
+| 2 | `lambda-build.yml` | Build & push Lambda Docker images |
+| 3 | `terraform-deploy.yml` | Deploy API Gateway, Lambda, etc. |
+
+```bash
+# Full deployment sequence
+gh workflow run ecr-deploy.yml -f environment=sandbox
+gh workflow run lambda-build.yml -f environment=sandbox
+gh workflow run terraform-deploy.yml -f environment=sandbox
+```
 
 ## Verification
 
@@ -105,8 +144,8 @@ Check workflow logs for successful AWS authentication without access key errors.
 Repeat for remaining environments:
 
 - **staging**: Account 208318252599
-- **uat**: Account TBD
-- **production**: Account TBD
+- **uat**: Account 393766496546
+- **production**: Account 165835313193
 
 Each requires:
 1. OIDC provider creation in target account
