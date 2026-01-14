@@ -7,12 +7,12 @@ lambda-build: ## Build all Lambda container images locally
 	@for dir in $(LAMBDA_DIR)/*/; do \
 		name=$$(basename $$dir); \
 		echo "Building Lambda: $$name"; \
-		docker build --platform linux/arm64 -t mtls-$$name-lambda:local $$dir; \
+		docker build --platform linux/arm64 --build-arg LAMBDA_NAME=$$name -t mtls-$$name-lambda:local $(LAMBDA_DIR); \
 	done
 
 lambda-build-%: ## Build specific Lambda (e.g., lambda-build-health)
 	@echo "Building Lambda: $*"
-	@docker build --platform linux/arm64 -t mtls-$*-lambda:local $(LAMBDA_DIR)/$*/
+	@docker build --platform linux/arm64 --build-arg LAMBDA_NAME=$* -t mtls-$*-lambda:local $(LAMBDA_DIR)
 
 lambda-test: ## Run tests for all Lambdas
 	@for dir in $(LAMBDA_DIR)/*/; do \
