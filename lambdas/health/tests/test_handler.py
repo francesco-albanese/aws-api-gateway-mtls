@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from health.handler import (
+from src.health.handler import (
     APIGatewayProxyEventV2,
     APIGatewayProxyResponseV2,
     LambdaContext,

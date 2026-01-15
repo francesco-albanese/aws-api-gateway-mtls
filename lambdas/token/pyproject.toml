@@ -6,7 +6,7 @@ requires-python = ">=3.13"
 dependencies = []
 
 [dependency-groups]
-dev = ["pytest>=8.0.0", "ruff>=0.8.0", "pyright>=1.1.391"]
+dev = ["pytest>=8.0.0", "ruff>=0.8.0", "pyright>=1.1.391", "boto3>=1.42.0"]
 
 [build-system]
 requires = ["hatchling"]
@@ -22,7 +22,10 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
+[tool.pytest.ini_options]
+pythonpath = ["."]
+
 [tool.pyright]
 pythonVersion = "3.13"
 typeCheckingMode = "standard"
-include = ["src"]
+include = ["src", "tests"]

@@ -2,7 +2,7 @@
 
 import pytest
 
-from health.handler import APIGatewayProxyEventV2, LambdaContext
+from src.health.handler import APIGatewayProxyEventV2, LambdaContext
 
 
 class MockLambdaContext(LambdaContext):
