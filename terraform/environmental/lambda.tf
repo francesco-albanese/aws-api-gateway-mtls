@@ -71,3 +71,50 @@ resource "aws_apigatewayv2_route" "health" {
   route_key = "GET /health"
   target    = "integrations/${aws_apigatewayv2_integration.health.id}"
 }
+
+# Token Lambda - exchanges mTLS client cert for JWT
+
+variable "token_lambda_image_tag" {
+  description = "Image tag for token Lambda (git SHA or 'latest')"
+  type        = string
+  default     = "latest"
+}
+
+data "aws_ecr_repository" "token_lambda" {
+  name = "mtls-api-token-lambda"
+}
+
+resource "aws_lambda_function" "token" {
+  function_name = "mtls-api-token"
+  role          = aws_iam_role.lambda_exec.arn
+  package_type  = "Image"
+  image_uri     = "${data.aws_ecr_repository.token_lambda.repository_url}:${var.token_lambda_image_tag}"
+  architectures = ["arm64"]
+  timeout       = 30
+  memory_size   = 128
+
+  tags = {
+    Name = "mtls-api-token"
+  }
+}
+
+resource "aws_lambda_permission" "token_api_gateway" {
+  statement_id  = "AllowAPIGatewayInvoke"
+  action        = "lambda:InvokeFunction"
+  function_name = aws_lambda_function.token.function_name
+  principal     = "apigateway.amazonaws.com"
+  source_arn    = "${aws_apigatewayv2_api.mtls_api.execution_arn}/*/*"
+}
+
+resource "aws_apigatewayv2_integration" "token" {
+  api_id                 = aws_apigatewayv2_api.mtls_api.id
+  integration_type       = "AWS_PROXY"
+  integration_uri        = aws_lambda_function.token.invoke_arn
+  payload_format_version = "2.0"
+}
+
+resource "aws_apigatewayv2_route" "token" {
+  api_id    = aws_apigatewayv2_api.mtls_api.id
+  route_key = "POST /oauth/token"
+  target    = "integrations/${aws_apigatewayv2_integration.token.id}"
+}
