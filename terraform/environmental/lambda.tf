@@ -50,6 +50,24 @@ resource "aws_iam_role_policy_attachment" "lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# Token lambda needs DynamoDB read access for cert validation
+resource "aws_iam_role_policy" "token_dynamodb" {
+  name = "mtls-api-token-dynamodb"
+  role = aws_iam_role.lambda_exec.id
+
+  policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Effect = "Allow"
+      Action = [
+        "dynamodb:GetItem",
+        "dynamodb:Query"
+      ]
+      Resource = aws_dynamodb_table.mtls_clients_metadata.arn
+    }]
+  })
+}
+
 resource "aws_lambda_permission" "api_gateway" {
   statement_id  = "AllowAPIGatewayInvoke"
   action        = "lambda:InvokeFunction"
@@ -92,6 +110,16 @@ resource "aws_lambda_function" "token" {
   architectures = ["arm64"]
   timeout       = 30
   memory_size   = 128
+
+  environment {
+    variables = {
+      COGNITO_USER_POOL_ID = aws_cognito_user_pool.mtls_api.id
+      COGNITO_CLIENT_ID    = aws_cognito_user_pool_client.mtls_api.id
+      COGNITO_CLIENT_SECRET = aws_cognito_user_pool_client.mtls_api.client_secret
+      COGNITO_DOMAIN       = "${aws_cognito_user_pool_domain.mtls_api.domain}.auth.${var.region}.amazoncognito.com"
+      DYNAMODB_TABLE_NAME  = aws_dynamodb_table.mtls_clients_metadata.name
+    }
+  }
 
   tags = {
     Name = "mtls-api-token"
