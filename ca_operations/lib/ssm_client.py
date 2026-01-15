@@ -15,9 +15,7 @@ class SSMClient:
         """
         self.client = boto3.client("ssm", region_name=region)
 
-    def get_intermediate_ca(
-        self, project_name: str, account: str
-    ) -> tuple[bytes, bytes]:
+    def get_intermediate_ca(self, project_name: str, account: str) -> tuple[bytes, bytes]:
         """Fetch intermediate CA key and certificate from SSM.
 
         Args:
@@ -34,12 +32,8 @@ class SSMClient:
         cert_path = f"/{project_name}/{account}/ca/intermediate/certificate"
 
         try:
-            key_response = self.client.get_parameter(
-                Name=key_path, WithDecryption=True
-            )
-            cert_response = self.client.get_parameter(
-                Name=cert_path, WithDecryption=False
-            )
+            key_response = self.client.get_parameter(Name=key_path, WithDecryption=True)
+            cert_response = self.client.get_parameter(Name=cert_path, WithDecryption=False)
 
             key_pem = key_response["Parameter"]["Value"].encode("utf-8")
             cert_pem = cert_response["Parameter"]["Value"].encode("utf-8")
@@ -50,8 +44,7 @@ class SSMClient:
             error_code = e.response.get("Error", {}).get("Code", "")
             if error_code == "ParameterNotFound":
                 raise ValueError(
-                    f"Intermediate CA not found in SSM. "
-                    f"Paths checked: {key_path}, {cert_path}"
+                    f"Intermediate CA not found in SSM. " f"Paths checked: {key_path}, {cert_path}"
                 ) from e
             raise
 

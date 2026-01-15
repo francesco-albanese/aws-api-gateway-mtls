@@ -1,7 +1,7 @@
 """Certificate utility functions for key generation, serialization, and metadata extraction."""
 
 import uuid
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from cryptography import x509
 from cryptography.hazmat.primitives import serialization
@@ -88,13 +88,13 @@ def extract_certificate_metadata(
         - issuedAt: ISO8601 timestamp (current UTC time)
         - ttl: unix timestamp (expiry + 90 days for DynamoDB auto-delete)
     """
-    cn = cert.subject.get_attributes_for_oid(x509.oid.NameOID.COMMON_NAME)[0].value
+    cn = cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
     if not isinstance(cn, str):
         raise ValueError("CN must be string")
 
     not_before = cert.not_valid_before_utc
     not_after = cert.not_valid_after_utc
-    issued_at = datetime.now(timezone.utc)
+    issued_at = datetime.now(UTC)
     ttl_datetime = not_after + timedelta(days=90)
 
     metadata: dict[str, str | int] = {
@@ -113,9 +113,7 @@ def extract_certificate_metadata(
     return metadata
 
 
-def create_truststore_bundle(
-    intermediate_cert_pem: bytes, root_cert_pem: bytes
-) -> bytes:
+def create_truststore_bundle(intermediate_cert_pem: bytes, root_cert_pem: bytes) -> bytes:
     """Create truststore bundle by concatenating Intermediate + Root certs in PEM format."""
     return intermediate_cert_pem + b"\n" + root_cert_pem
 

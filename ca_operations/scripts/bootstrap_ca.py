@@ -16,9 +16,7 @@ def main() -> int:
     Returns:
         Exit code (0 for success, 1 for failure)
     """
-    parser = argparse.ArgumentParser(
-        description="Bootstrap CA (generate Root + Intermediate)"
-    )
+    parser = argparse.ArgumentParser(description="Bootstrap CA (generate Root + Intermediate)")
     parser.add_argument(
         "--output-dir",
         type=Path,

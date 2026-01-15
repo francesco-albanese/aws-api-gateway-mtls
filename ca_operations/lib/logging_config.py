@@ -1,30 +1,36 @@
 """JSON logging configuration for CA operations scripts."""
 
 import logging
+from typing import Any
 
-from pythonjsonlogger import jsonlogger
+from pythonjsonlogger.json import JsonFormatter
 
 
-class CustomJsonFormatter(jsonlogger.JsonFormatter):
+class CustomJsonFormatter(JsonFormatter):
     """Custom JSON formatter with focused field set.
 
     Includes only 6 fields: timestamp, level, message, exc_info, funcName, lineno.
     Drops verbose fields like module, process, thread, processName, threadName, name.
     """
 
-    def add_fields(self, log_record, record, message_dict):
+    def add_fields(
+        self,
+        log_data: dict[str, Any],
+        record: logging.LogRecord,
+        message_dict: dict[str, Any],
+    ) -> None:
         """Override to include only specified fields.
 
         Args:
-            log_record: Dict to be logged as JSON
+            log_data: Dict to be logged as JSON
             record: LogRecord object from logging framework
             message_dict: Dict containing message and args
         """
-        super().add_fields(log_record, record, message_dict)
+        super().add_fields(log_data, record, message_dict)
 
         # Rename levelname to level for cleaner output
-        if "levelname" in log_record:
-            log_record["level"] = log_record.pop("levelname")
+        if "levelname" in log_data:
+            log_data["level"] = log_data.pop("levelname")
 
         # Keep only required fields for readable JSON logs
         allowed_fields = {
@@ -37,9 +43,9 @@ class CustomJsonFormatter(jsonlogger.JsonFormatter):
         }
 
         # Remove all fields not in allowed set
-        keys_to_remove = [key for key in log_record if key not in allowed_fields]
+        keys_to_remove = [key for key in log_data if key not in allowed_fields]
         for key in keys_to_remove:
-            log_record.pop(key)
+            log_data.pop(key)
 
 
 def _setup_logger() -> logging.Logger:
