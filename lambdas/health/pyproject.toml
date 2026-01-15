@@ -6,7 +6,7 @@ requires-python = ">=3.13"
 dependencies = []
 
 [dependency-groups]
-dev = ["pytest>=8.0.0", "ruff>=0.8.0"]
+dev = ["pytest>=8.0.0", "ruff>=0.8.0", "pyright>=1.1.391"]
 
 [build-system]
 requires = ["hatchling"]
@@ -21,3 +21,8 @@ line-length = 100
 
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
+
+[tool.pyright]
+pythonVersion = "3.13"
+typeCheckingMode = "standard"
+include = ["src"]

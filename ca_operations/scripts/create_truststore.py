@@ -16,9 +16,7 @@ def main() -> int:
     Returns:
         Exit code (0 for success, 1 for failure)
     """
-    parser = argparse.ArgumentParser(
-        description="Create truststore bundle (Intermediate + Root)"
-    )
+    parser = argparse.ArgumentParser(description="Create truststore bundle (Intermediate + Root)")
     parser.add_argument(
         "--ca-dir",
         type=Path,

@@ -1,17 +1,17 @@
 """Certificate builder for X.509 certificate construction."""
 
-from datetime import datetime, timedelta, timezone
+from datetime import UTC, datetime, timedelta
 
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
 from .cert_utils import (
-            extract_csr_public_key,
-            extract_csr_subject,
-            generate_serial_number,
-            validate_csr_signature,
-        )
+    extract_csr_public_key,
+    extract_csr_subject,
+    generate_serial_number,
+    validate_csr_signature,
+)
 from .config import DistinguishedName
 
 
@@ -35,7 +35,7 @@ class CertificateBuilder:
             Self-signed X.509 certificate with CA extensions
         """
         subject = subject_dn.to_x509_name()
-        not_before = datetime.now(timezone.utc)
+        not_before = datetime.now(UTC)
         not_after = not_before + timedelta(days=validity_years * 365)
 
         builder = (
@@ -104,7 +104,7 @@ class CertificateBuilder:
         subject = extract_csr_subject(csr)
         public_key = extract_csr_public_key(csr)
 
-        not_before = datetime.now(timezone.utc)
+        not_before = datetime.now(UTC)
         not_after = not_before + timedelta(days=validity_years * 365)
 
         builder = (
@@ -168,7 +168,7 @@ class CertificateBuilder:
         subject = extract_csr_subject(csr)
         public_key = extract_csr_public_key(csr)
 
-        not_before = datetime.now(timezone.utc)
+        not_before = datetime.now(UTC)
         not_after = not_before + timedelta(days=validity_days)
 
         builder = (

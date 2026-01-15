@@ -40,9 +40,7 @@ class DistinguishedName:
                 x509.NameAttribute(oid.NameOID.STATE_OR_PROVINCE_NAME, self.state),
                 x509.NameAttribute(oid.NameOID.LOCALITY_NAME, self.locality),
                 x509.NameAttribute(oid.NameOID.ORGANIZATION_NAME, self.organization),
-                x509.NameAttribute(
-                    oid.NameOID.ORGANIZATIONAL_UNIT_NAME, self.organizational_unit
-                ),
+                x509.NameAttribute(oid.NameOID.ORGANIZATIONAL_UNIT_NAME, self.organizational_unit),
                 x509.NameAttribute(oid.NameOID.COMMON_NAME, self.common_name),
             ]
         )

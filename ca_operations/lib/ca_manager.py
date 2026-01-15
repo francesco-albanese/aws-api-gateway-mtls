@@ -109,18 +109,16 @@ class CAManager:
         intermediate_csr_path.write_bytes(csr.public_bytes(serialization.Encoding.PEM))
 
         intermediate_metadata = extract_certificate_metadata(intermediate_cert)
-        intermediate_metadata_path.write_text(
-            json.dumps(intermediate_metadata, indent=2)
-        )
+        intermediate_metadata_path.write_text(json.dumps(intermediate_metadata, indent=2))
 
         return BootstrapResult(
             root_key_path=root_key_path,
             root_cert_path=root_cert_path,
-            root_serial=root_metadata["serialNumber"],
+            root_serial=str(root_metadata["serialNumber"]),
             intermediate_key_path=intermediate_key_path,
             intermediate_cert_path=intermediate_cert_path,
             intermediate_csr_path=intermediate_csr_path,
-            intermediate_serial=intermediate_metadata["serialNumber"],
+            intermediate_serial=str(intermediate_metadata["serialNumber"]),
         )
 
     def create_truststore(self, output_base_dir: Path, truststore_path: Path) -> Path:
@@ -136,15 +134,11 @@ class CAManager:
         Raises:
             FileNotFoundError: If CA certificates not found
         """
-        intermediate_cert_path = (
-            output_base_dir / "intermediate-ca" / "IntermediateCA.pem"
-        )
+        intermediate_cert_path = output_base_dir / "intermediate-ca" / "IntermediateCA.pem"
         root_cert_path = output_base_dir / "root-ca" / "RootCA.pem"
 
         if not intermediate_cert_path.exists():
-            raise FileNotFoundError(
-                f"intermediate CA cert not found: {intermediate_cert_path}"
-            )
+            raise FileNotFoundError(f"intermediate CA cert not found: {intermediate_cert_path}")
         if not root_cert_path.exists():
             raise FileNotFoundError(f"root CA cert not found: {root_cert_path}")
 
@@ -187,13 +181,9 @@ class CAManager:
         intermediate_cert_path = ca_base_dir / "intermediate-ca" / "IntermediateCA.pem"
 
         if not intermediate_key_path.exists():
-            raise FileNotFoundError(
-                f"intermediate CA key not found: {intermediate_key_path}"
-            )
+            raise FileNotFoundError(f"intermediate CA key not found: {intermediate_key_path}")
         if not intermediate_cert_path.exists():
-            raise FileNotFoundError(
-                f"intermediate CA cert not found: {intermediate_cert_path}"
-            )
+            raise FileNotFoundError(f"intermediate CA cert not found: {intermediate_cert_path}")
 
         intermediate_key = deserialize_private_key(intermediate_key_path.read_bytes())
         intermediate_cert = deserialize_certificate(intermediate_cert_path.read_bytes())
