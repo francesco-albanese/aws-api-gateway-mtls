@@ -1,12 +1,16 @@
 """Test fixtures for token lambda tests."""
 
 from datetime import UTC, datetime, timedelta
-from typing import Any
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.token.handler import APIGatewayProxyEventV2, CertMetadata, LambdaContext
+from src.token.types import (
+    APIGatewayProxyEventV2,
+    CertMetadata,
+    CognitoTokenResponse,
+    LambdaContext,
+)
 
 
 class MockLambdaContext(LambdaContext):
@@ -111,7 +115,7 @@ def mock_env_vars() -> dict[str, str]:
 
 
 @pytest.fixture
-def mock_cognito_token_response() -> dict[str, Any]:
+def mock_cognito_token_response() -> CognitoTokenResponse:
     """Mock Cognito token endpoint response."""
     return {
         "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9.test",
@@ -128,9 +132,9 @@ def mock_dynamodb_client():
 
 @pytest.fixture
 def patch_dynamodb(mock_dynamodb_client: MagicMock):
-    """Patch _get_dynamodb_client to return mock."""
+    """Patch get_dynamodb_client to return mock."""
     with patch(
-        "src.token.handler._get_dynamodb_client",
+        "src.token.cert_metadata.get_dynamodb_client",
         return_value=mock_dynamodb_client,
     ) as p:
         yield p
@@ -138,6 +142,6 @@ def patch_dynamodb(mock_dynamodb_client: MagicMock):
 
 @pytest.fixture
 def patch_cognito_exchange():
-    """Patch _exchange_for_cognito_token."""
-    with patch("src.token.handler._exchange_for_cognito_token") as p:
+    """Patch exchange_for_cognito_token."""
+    with patch("src.token.cognito_exchange.exchange_for_cognito_token") as p:
         yield p

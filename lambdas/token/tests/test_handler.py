@@ -2,19 +2,19 @@
 
 import json
 import os
-from typing import Any
 from unittest.mock import MagicMock, patch
 
-from src.token.handler import (
+from src.token.handler import handler
+from src.token.types import (
     APIGatewayProxyEventV2,
     APIGatewayProxyResponseV2,
     CertMetadata,
+    CognitoTokenResponse,
     LambdaContext,
-    handler,
 )
 
 
-def parse_response_body(response: APIGatewayProxyResponseV2) -> dict[str, Any]:
+def parse_response_body(response: APIGatewayProxyResponseV2) -> dict[str, str | int]:
     """Parse response body, asserting it exists."""
     body = response.get("body")
     assert body is not None, "Response body should not be None"
@@ -30,7 +30,7 @@ class TestTokenValidCertInDynamoDB:
         mock_context: LambdaContext,
         active_cert_metadata: CertMetadata,
         mock_env_vars: dict[str, str],
-        mock_cognito_token_response: dict[str, Any],
+        mock_cognito_token_response: CognitoTokenResponse,
         mock_dynamodb_client: MagicMock,
     ) -> None:
         """Handler returns 200 when cert is valid and token issued."""
@@ -48,11 +48,11 @@ class TestTokenValidCertInDynamoDB:
         with (
             patch.dict(os.environ, mock_env_vars),
             patch(
-                "src.token.handler._get_dynamodb_client",
+                "src.token.cert_metadata.get_dynamodb_client",
                 return_value=mock_dynamodb_client,
             ),
             patch(
-                "src.token.handler._exchange_for_cognito_token",
+                "src.token.handler.exchange_for_cognito_token",
                 return_value=mock_cognito_token_response,
             ),
         ):
@@ -65,7 +65,7 @@ class TestTokenValidCertInDynamoDB:
         mock_context: LambdaContext,
         active_cert_metadata: CertMetadata,
         mock_env_vars: dict[str, str],
-        mock_cognito_token_response: dict[str, Any],
+        mock_cognito_token_response: CognitoTokenResponse,
         mock_dynamodb_client: MagicMock,
     ) -> None:
         """Handler returns access_token in response body."""
@@ -83,11 +83,11 @@ class TestTokenValidCertInDynamoDB:
         with (
             patch.dict(os.environ, mock_env_vars),
             patch(
-                "src.token.handler._get_dynamodb_client",
+                "src.token.cert_metadata.get_dynamodb_client",
                 return_value=mock_dynamodb_client,
             ),
             patch(
-                "src.token.handler._exchange_for_cognito_token",
+                "src.token.handler.exchange_for_cognito_token",
                 return_value=mock_cognito_token_response,
             ),
         ):
@@ -114,7 +114,7 @@ class TestTokenCertNotFound:
         with (
             patch.dict(os.environ, mock_env_vars),
             patch(
-                "src.token.handler._get_dynamodb_client",
+                "src.token.cert_metadata.get_dynamodb_client",
                 return_value=mock_dynamodb_client,
             ),
         ):
@@ -134,14 +134,15 @@ class TestTokenCertNotFound:
         with (
             patch.dict(os.environ, mock_env_vars),
             patch(
-                "src.token.handler._get_dynamodb_client",
+                "src.token.cert_metadata.get_dynamodb_client",
                 return_value=mock_dynamodb_client,
             ),
         ):
             response = handler(event_with_serial_number, mock_context)
             body = parse_response_body(response)
             assert body["error"] == "not_found"
-            assert "not registered" in body["message"].lower()
+            message = body["message"]
+            assert isinstance(message, str) and "not registered" in message.lower()
 
 
 class TestTokenCertRevoked:
@@ -170,7 +171,7 @@ class TestTokenCertRevoked:
         with (
             patch.dict(os.environ, mock_env_vars),
             patch(
-                "src.token.handler._get_dynamodb_client",
+                "src.token.cert_metadata.get_dynamodb_client",
                 return_value=mock_dynamodb_client,
             ),
         ):
@@ -200,14 +201,15 @@ class TestTokenCertRevoked:
         with (
             patch.dict(os.environ, mock_env_vars),
             patch(
-                "src.token.handler._get_dynamodb_client",
+                "src.token.cert_metadata.get_dynamodb_client",
                 return_value=mock_dynamodb_client,
             ),
         ):
             response = handler(event_with_serial_number, mock_context)
             body = parse_response_body(response)
             assert body["error"] == "forbidden"
-            assert "revoked" in body["message"].lower()
+            message = body["message"]
+            assert isinstance(message, str) and "revoked" in message.lower()
 
 
 class TestTokenCertExpired:
@@ -236,7 +238,7 @@ class TestTokenCertExpired:
         with (
             patch.dict(os.environ, mock_env_vars),
             patch(
-                "src.token.handler._get_dynamodb_client",
+                "src.token.cert_metadata.get_dynamodb_client",
                 return_value=mock_dynamodb_client,
             ),
         ):
@@ -266,14 +268,15 @@ class TestTokenCertExpired:
         with (
             patch.dict(os.environ, mock_env_vars),
             patch(
-                "src.token.handler._get_dynamodb_client",
+                "src.token.cert_metadata.get_dynamodb_client",
                 return_value=mock_dynamodb_client,
             ),
         ):
             response = handler(event_with_serial_number, mock_context)
             body = parse_response_body(response)
             assert body["error"] == "forbidden"
-            assert "expired" in body["message"].lower()
+            message = body["message"]
+            assert isinstance(message, str) and "expired" in message.lower()
 
 
 class TestTokenCognitoErrorHandling:
@@ -302,11 +305,11 @@ class TestTokenCognitoErrorHandling:
         with (
             patch.dict(os.environ, mock_env_vars),
             patch(
-                "src.token.handler._get_dynamodb_client",
+                "src.token.cert_metadata.get_dynamodb_client",
                 return_value=mock_dynamodb_client,
             ),
             patch(
-                "src.token.handler._exchange_for_cognito_token",
+                "src.token.handler.exchange_for_cognito_token",
                 return_value=None,  # Cognito failure
             ),
         ):
@@ -336,18 +339,19 @@ class TestTokenCognitoErrorHandling:
         with (
             patch.dict(os.environ, mock_env_vars),
             patch(
-                "src.token.handler._get_dynamodb_client",
+                "src.token.cert_metadata.get_dynamodb_client",
                 return_value=mock_dynamodb_client,
             ),
             patch(
-                "src.token.handler._exchange_for_cognito_token",
+                "src.token.handler.exchange_for_cognito_token",
                 return_value=None,
             ),
         ):
             response = handler(event_with_serial_number, mock_context)
             body = parse_response_body(response)
             assert body["error"] == "server_error"
-            assert "cognito" in body["message"].lower()
+            message = body["message"]
+            assert isinstance(message, str) and "cognito" in message.lower()
 
 
 class TestTokenMissingClientCert:
@@ -371,7 +375,8 @@ class TestTokenMissingClientCert:
         response = handler(event_without_serial_number, mock_context)
         body = parse_response_body(response)
         assert body["error"] == "unauthorized"
-        assert "missing" in body["message"].lower()
+        message = body["message"]
+        assert isinstance(message, str) and "missing" in message.lower()
 
     def test_empty_event_returns_401(
         self,
@@ -411,7 +416,7 @@ class TestTokenCognitoMisconfigured:
         with (
             patch.dict(os.environ, env_vars, clear=True),
             patch(
-                "src.token.handler._get_dynamodb_client",
+                "src.token.cert_metadata.get_dynamodb_client",
                 return_value=mock_dynamodb_client,
             ),
         ):
@@ -419,4 +424,5 @@ class TestTokenCognitoMisconfigured:
             assert response["statusCode"] == 500
             body = parse_response_body(response)
             assert body["error"] == "server_error"
-            assert "configured" in body["message"].lower()
+            message = body["message"]
+            assert isinstance(message, str) and "configured" in message.lower()
