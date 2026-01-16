@@ -31,3 +31,11 @@ repos:
         types: [python]
         files: ^lambdas/token/
         pass_filenames: false
+
+      - id: pyright-authorizer
+        name: pyright (authorizer lambda)
+        entry: bash -c 'cd lambdas/authorizer && uv run pyright'
+        language: system
+        types: [python]
+        files: ^lambdas/authorizer/
+        pass_filenames: false

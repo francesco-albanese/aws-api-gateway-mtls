@@ -70,3 +70,38 @@ resource "aws_ecr_lifecycle_policy" "token_lambda" {
     }]
   })
 }
+
+resource "aws_ecr_repository" "authorizer_lambda" {
+  name                 = "${var.project_name}-authorizer-lambda"
+  image_tag_mutability = "MUTABLE"
+  force_delete         = false
+
+  image_scanning_configuration {
+    scan_on_push = true
+  }
+
+  tags = {
+    Name = "${var.project_name}-authorizer-lambda"
+  }
+
+  lifecycle {
+    prevent_destroy = true
+  }
+}
+
+resource "aws_ecr_lifecycle_policy" "authorizer_lambda" {
+  repository = aws_ecr_repository.authorizer_lambda.name
+
+  policy = jsonencode({
+    rules = [{
+      rulePriority = 1
+      description  = "Keep last 5 images"
+      selection = {
+        tagStatus   = "any"
+        countType   = "imageCountMoreThan"
+        countNumber = 5
+      }
+      action = { type = "expire" }
+    }]
+  })
+}
