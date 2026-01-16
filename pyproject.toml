@@ -31,5 +31,5 @@ select = ["E", "F", "I", "UP", "B", "SIM"]
 [tool.pyright]
 pythonVersion = "3.13"
 typeCheckingMode = "standard"
-include = ["lambdas/**/src", "ca_operations"]
+include = ["ca_operations"]
 exclude = ["**/__pycache__", "**/tests"]

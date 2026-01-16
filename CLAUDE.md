@@ -36,13 +36,39 @@ Multi-stack pattern with environment separation:
 
 - Truststore: S3 bucket with chain bundle (IntermediateCA.pem + RootCA.pem)
 
-## Lambda Provisioning
+## Test rules
 
-New lambda: create `lambdas/<name>/` with:
+- when defining tests within a Lambda folder, you need to navigate one folder up to find the handler
+  DON'T DO THIS
 
-- `pyproject.toml` + `uv.lock` (use `uv init`)
-- `src/<name>/handler.py` with `handler(event, context)` function
+  ```python
+  from health.handler import (
+    APIGatewayProxyEventV2,
+    APIGatewayProxyResponseV2,
+    LambdaContext,
+    handler,
+  )
+  ```
 
-Shared `lambdas/Dockerfile` builds any lambda via `--build-arg LAMBDA_NAME=<name>`.
+  DO THIS:
 
-Build: `make lambda-build-<name>`
+  ```python
+  from ..src.health.handler import (
+    APIGatewayProxyEventV2,
+    APIGatewayProxyResponseV2,
+    LambdaContext,
+    handler,
+  )
+
+  ```
+
+  ## Lambda rules
+
+- When creating a Lambda, if the lambda needs to call other functions with a specific functionality, extract those functions outside the `handler.py` giving it a meaningful name.
+- Example: extract metadata certs from Dynamodb, create `extract_certs.py` and import the needed function into `handler.py` for consumption.
+- Make sure to follow single responsibility principle, keep the code modular
+
+# Lint rules
+
+- uv run ruff format --check must be ran individually per lambda
+- `.pre-commit-config.yaml` might not have the correct hook if a lambda has just been added, must be updated
