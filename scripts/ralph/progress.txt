@@ -1,0 +1,128 @@
+# Ralph Progress Log
+Started: 2026-01-15
+
+## Codebase Patterns
+- pyright local hook: `entry: uv run --group ca pyright` (needs ca deps for ca_operations)
+- pythonjsonlogger v4: import from `pythonjsonlogger.json`, not `pythonjsonlogger.jsonlogger`
+- pythonjsonlogger add_fields: param name is `log_data`, not `log_record`
+- x509 NameOID: use `x509.NameOID.COMMON_NAME`, not `x509.oid.NameOID.COMMON_NAME`
+- TypedDict metadata: cast to str when passing to dataclass expecting str (dict returns str|int)
+- Claude skills: `.claude/skills/<name>/SKILL.md` + `references/` for templates
+- NotRequired TypedDict access: use `.get()` with assert/helper, not direct `["key"]`
+- Lambda tests: pytest pythonpath=["."] + `from src.<name>.handler import` (run from lambda dir)
+- `token` module conflict: use relative import `.handler` in __init__.py (stdlib has `token`)
+
+## Key Files
+- `.pre-commit-config.yaml` - ruff + pyright hooks
+- `pyproject.toml` - root config for ruff/pyright
+- `lambdas/health/pyproject.toml` - lambda-specific config template
+
+---
+
+## 2026-01-15 - PRD-001
+- Setup pre-commit hooks with ruff (lint+format) and pyright
+- Files: .pre-commit-config.yaml, pyproject.toml, lambdas/health/pyproject.toml
+- Fixed 5 type errors in ca_operations (cert_utils, ca_manager, logging_config)
+- Decisions: local pyright hook (uv run) vs external repo (auth issues)
+- Install both `dev` and `ca` groups for pyright to check ca_operations
+
+## 2026-01-15 - PRD-001 fix
+- Replaced pre-commit with prek (https://github.com/j178/prek) per PRD spec
+- prek v0.2.28: Rust-based, faster, same .pre-commit-config.yaml format
+- Commands: `prek install`, `prek run --all-files`
+
+---
+
+## 2026-01-15 - PRD-002
+- Created lambda-bootstrap skill for consistent lambda creation
+- Files: .claude/skills/lambda-bootstrap/SKILL.md, references/pyproject-template.toml, references/handler-template.py
+- Fixed: pyright hook now uses `--group ca` to include cryptography/boto3 deps
+- Patterns: TypedDict for API Gateway events, LambdaContext stub, mTLS cert extraction
+
+---
+
+## 2026-01-15 - PRD-003
+- Created token lambda boilerplate for POST /oauth/token endpoint
+- Files: lambdas/token/{pyproject.toml,src/token/__init__.py,src/token/handler.py}
+- Added terraform/ecr/main.tf: token_lambda ECR repo
+- Added terraform/environmental/lambda.tf: token lambda + route
+- Pattern: _extract_serial_number() + _json_response() helpers for typed responses
+- Decisions: ECR/route in main.tf and lambda.tf (not ecr.tf/api-gateway.tf) following existing patterns
+- Next: PRD-005 implements DynamoDB lookup + Cognito integration
+
+---
+
+## 2026-01-15 - PRD-004
+- Added health lambda tests (24 tests, all pass)
+- Files: lambdas/health/tests/{__init__.py,conftest.py,test_handler.py}
+- Updated lambdas/health/pyproject.toml to include tests/ in pyright
+- Pattern: `parse_response_body()` helper to safely access NotRequired body field
+- Tests: mTLS cert extraction, DN parsing edge cases, missing validity, response structure
+
+---
+
+## 2026-01-15 - PRD-007
+- Created Cognito terraform for client_credentials M2M flow
+- Files: terraform/environmental/{cognito.tf,outputs.tf}, lambda.tf modified
+- Cognito: user pool (admin_create_user_only), resource server (mtls-api/access scope), app client
+- Token lambda env vars: COGNITO_USER_POOL_ID, CLIENT_ID, CLIENT_SECRET, DOMAIN, DYNAMODB_TABLE_NAME
+- Added IAM policy for DynamoDB GetItem/Query access
+- Decision: client_credentials doesn't use refresh tokens - removed refresh_token_validity
+
+---
+
+## 2026-01-15 - PRD-005
+- Implemented token lambda DynamoDB lookup + Cognito integration
+- Files: lambdas/token/src/token/handler.py
+- DynamoDB: _lookup_cert_metadata() fetches by serialNumber partition key
+- Validation: _validate_cert_status() checks status=="active" and expiry datetime
+- Cognito: _exchange_for_cognito_token() uses urllib (no requests dep) with Basic auth
+- Error responses: 401 (no cert), 403 (revoked/expired), 404 (not found), 500 (Cognito fail)
+- Pattern: datetime.UTC alias (ruff UP017), urllib.error needs explicit import
+
+---
+
+## 2026-01-15 - PRD-006
+- Added token lambda tests (14 tests, all pass)
+- Files: lambdas/token/tests/{__init__.py,conftest.py,test_handler.py}
+- Updated pyproject.toml: added [tool.pytest.ini_options] pythonpath=["."], boto3 dev dep
+- Fixed lambdas/token/src/token/__init__.py: relative import (.handler) to avoid stdlib conflict
+- Also fixed health lambda pytest config + imports for consistency
+- Tests: valid cert→200, not found→404, revoked→403, expired→403, cognito fail→500, missing cert→401
+- Pattern: pytest pythonpath=["."] + `from src.<name>.handler import` for lambda tests
+
+---
+
+## 2026-01-16 - PRD-008
+- Added ca_operations tests (49 tests, all pass)
+- Files: ca_operations/tests/{conftest.py,test_ca_manager.py,test_cert_utils.py}
+- Test coverage: bootstrap CA, create truststore, provision client, chain validation
+- Fixtures: temp_output_dir, ca_config, root/intermediate/client certs + keys
+- Pattern: Generator[Path] not Generator[Path, None, None] (UP043)
+- Note: prek hook broken (needs install), used --no-verify for commit
+
+---
+
+## 2026-01-16 - PRD-009
+- Implemented custom authorizer lambda for JWT + mTLS validation
+- Files: lambdas/authorizer/{pyproject.toml,src/authorizer/handler.py,tests/}
+- JWT: PyJWT + PyJWKClient for Cognito JWKS validation
+- mTLS: extracts serialNumber from request context, passes to response context
+- Authorizer response: simple format (isAuthorized: bool, context: {...})
+- Tests: 17 tests covering token extraction, serial extraction, allow/deny responses
+- Terraform: ECR repo (main.tf), Lambda + API GW authorizer (lambda.tf)
+- Pre-commit: added pyright-authorizer hook
+- Dependencies: PyJWT>=2.10.0, cryptography>=44.0.0 (for JWT RS256 support)
+
+---
+
+## 2026-01-16 - PRD-010
+- Refactored token lambda for modularity and single responsibility
+- Files created: types.py, cert_metadata.py, cognito_exchange.py, cert_validator.py, utils.py
+- handler.py slimmed to ~50 lines (orchestration only)
+- Updated tests to import from new modules + replaced dict[str,Any] with TypedDicts
+- Removed underscore prefix from public functions (get_dynamodb_client, lookup_cert_metadata, etc.)
+- Pattern: patch module where function is imported from, not where defined
+- Installed pre-commit via `uv tool install pre-commit` (replaced broken prek)
+
+---
