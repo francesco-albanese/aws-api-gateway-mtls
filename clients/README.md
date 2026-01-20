@@ -25,7 +25,7 @@ aws ssm get-parameter \
 ## Test Health Endpoint
 
 ```bash
-API_URL="https://api.${ENV}.example.com"
+API_URL="https://api-sandbox.francescoalbanese.dev"
 
 curl -v \
   --cert /tmp/client.pem \
