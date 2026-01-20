@@ -1,48 +1,21 @@
-## Project Overview
+# Project Overview
 
 AWS API Gateway HTTP regional endpoint with mTLS enforcement. Uses certificate chain mechanism (Root CA → Intermediate CA → Client certs) with S3 truststore, custom domains, ACM certs, Cognito client_credentials flow, and DynamoDB for certificate metadata validation.
 
-## Build System
+## Package manager
 
-Makefile-based build system with modular makefiles in [makefiles/](makefiles/).
+- python 3.13.7 with `uv` package manager
 
-## Terraform Architecture
+## Tech stack
 
-Multi-stack pattern with environment separation:
+- aws services with `boto3`
+- terraform deployment via Github actions and workflows
+- [Github Actions and workflows](.github/)
+- [Instructions on what operations to run on CI and what order](.github/README.md)
 
-**Environmental Stack** (`terraform/environmental/`):
+## Rules
 
-- Contains: API Gateway, custom domain, ACM cert, Lambda functions, Cognito, DynamoDB, Route53
-
-**Certificate bootstrap Stack** (`terraform/certificate-bootstrap/`):
-
-- Contains: S3 truststore, CA certs and private keys stored as SSM parameter store
-
-**Client provisioning Stack** (`terraform/client-provisioning/`):
-
-- Contains: dynamodb table items such as serialNumber of clients certs, clientName, client_id, clients private key and cert stored in SSM parameter store
-
-**ECR Stack** (`terraform/ecr/`):
-
-- Contains: ECR repositories for Lambda container images
-
-## Certificate Authority Structure
-
-**3-tier PKI chain:**
-
-1. Root CA (self-signed, 10yr) → 2. Intermediate CA (signed by Root, 5yr) → 3. Client certs (signed by Intermediate, 1yr)
-
-**Storage:**
-
-- Truststore: S3 bucket with chain bundle (IntermediateCA.pem + RootCA.pem)
-
-## Lambda Provisioning
-
-New lambda: create `lambdas/<name>/` with:
-
-- `pyproject.toml` + `uv.lock` (use `uv init`)
-- `src/<name>/handler.py` with `handler(event, context)` function
-
-Shared `lambdas/Dockerfile` builds any lambda via `--build-arg LAMBDA_NAME=<name>`.
-
-Build: `make lambda-build-<name>`
+- [Testing rules](.claude/rules/testing.md) - should be read when working with tests or running tests
+- [Lambda rules](.claude/rules/lambda.md) - should be consulted when working with lambdas
+- [Lint rules](.claude/rules/linting.md) - explains how to run linting and formatting
+- [Terraform architecture](terraform/README.md) - explains the modular terraform architecture with all the available stacks

@@ -4,10 +4,12 @@ Certificate authority operations using CSR-based PKI flow. Generates local artif
 
 ## Architecture
 
-**Scripts-only**: Pure cryptographic operations, no AWS SDK. Writes files to filesystem, Terraform provisions AWS resources (Parameter Store, S3, DynamoDB).
+**Scripts-only**: Pure cryptographic operations, Writes files to filesystem and Terraform provisions AWS resources storing certificates in Parameter Store, certificate chain in S3 truststore and certs metadata in DynamoDB.
 
 **CSR-based PKI flow**:
-- Requester creates CSR with identity + public key, signs with private key
+
+- Requester creates private + public key pair
+- Requester creates CSR with identity and public key encoded, signs the CSR with private key
 - CA validates CSR signature (proves private key possession)
 - CA extracts subject DN and public key FROM CSR
 - CA issues certificate without ever seeing requester's private key
@@ -15,6 +17,7 @@ Certificate authority operations using CSR-based PKI flow. Generates local artif
 ## Certificate Hierarchy
 
 3-tier PKI:
+
 - Root CA (self-signed, 10yr, RSA 4096)
 - Intermediate CA (signed by Root via CSR, 5yr, RSA 4096, pathlen:0)
 - Client certs (signed by Intermediate via CSR, 395 days, RSA 4096)
@@ -25,11 +28,9 @@ Certificate authority operations using CSR-based PKI flow. Generates local artif
 
 ```bash
 # Generate Root CA and Intermediate CA
-PYTHONPATH=/Users/francescoalbanese/Documents/Development/aws-api-gateway-mtls \
 uv run ca_operations/scripts/bootstrap_ca.py --output-dir ca_operations/output
 
 # Create truststore bundle (Intermediate + Root)
-PYTHONPATH=/Users/francescoalbanese/Documents/Development/aws-api-gateway-mtls \
 uv run ca_operations/scripts/create_truststore.py \
   --ca-dir ca_operations/output \
   --output ca_operations/output/truststore/truststore.pem
@@ -38,7 +39,6 @@ uv run ca_operations/scripts/create_truststore.py \
 ### Provision Client Certificates (Repeatable)
 
 ```bash
-PYTHONPATH=/Users/francescoalbanese/Documents/Development/aws-api-gateway-mtls \
 uv run ca_operations/scripts/provision_client.py \
   --client-id api-client-001 \
   --ca-dir ca_operations/output \
@@ -47,7 +47,7 @@ uv run ca_operations/scripts/provision_client.py \
 
 ## Output Structure
 
-```
+```text
 ca_operations/output/
 ├── root-ca/
 │   ├── RootCA.key          # Root CA private key (Parameter Store)
@@ -70,12 +70,12 @@ ca_operations/output/
 
 ## Metadata Format
 
-Serial numbers use UUID v4 for strong uniqueness guarantees (128-bit, ~122 bits entropy).
+Serial numbers use UUID v4 for strong uniqueness guarantees.
 Formatted as hex with colons for readability and OpenSSL compatibility.
 
 ```json
 {
-  "serialNumber": "3A:F2:B1:4C:...",  // UUID-based, hex-colon format
+  "serialNumber": "3A:F2:B1:4C:...",
   "CN": "api-client-001",
   "notBefore": "2025-12-13T10:00:00+00:00",
   "notAfter": "2027-01-12T10:00:00+00:00",
@@ -85,22 +85,6 @@ Formatted as hex with colons for readability and OpenSSL compatibility.
 }
 ```
 
-## Verification
-
-```bash
-# Verify certificate chain
-openssl verify -CAfile ca_operations/output/truststore/truststore.pem \
-  ca_operations/output/clients/api-client-001/client.pem
-
-# Verify CSR and cert subjects match
-openssl req -in ca_operations/output/clients/api-client-001/client.csr -noout -subject
-openssl x509 -in ca_operations/output/clients/api-client-001/client.pem -noout -subject
-
-# Verify CSR and cert public keys match (md5 hashes should match)
-openssl req -in ca_operations/output/clients/api-client-001/client.csr -noout -pubkey | md5
-openssl x509 -in ca_operations/output/clients/api-client-001/client.pem -noout -pubkey | md5
-```
-
 ## Library Modules
 
 - `lib/config.py`: CAConfig, DistinguishedName dataclasses
@@ -108,21 +92,3 @@ openssl x509 -in ca_operations/output/clients/api-client-001/client.pem -noout -
 - `lib/certificate_builder.py`: CSR-based certificate building (build_root_ca, build_intermediate_ca, build_client_certificate)
 - `lib/ca_manager.py`: CAManager orchestration (bootstrap_ca, create_truststore, provision_client_certificate)
 - `lib/models.py`: BootstrapResult, ClientCertResult dataclasses
-
-## Serial Number Generation
-
-Certificate serial numbers use UUID v4 (`uuid.uuid4().int`) for:
-- **Uniqueness**: Collision probability ~2.71 × 10^-18 for 1 billion certificates
-- **Entropy**: 128-bit integers with ~122 bits effective randomness
-- **Compliance**: Exceeds CA/Browser Forum baseline (64 bits CSPRNG minimum)
-- **Determinism**: Consistent bit length across all certificates
-
-Format in metadata: Hexadecimal with colon separators (e.g., "0B:EF:DC:22:C0:8E:...")
-
-## Dependencies
-
-```bash
-uv sync --group ca --group dev
-```
-
-See `pyproject.toml` dependency groups for cryptography and dev tools.

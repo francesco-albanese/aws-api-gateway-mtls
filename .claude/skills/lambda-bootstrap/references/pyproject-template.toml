@@ -1,7 +1,7 @@
 [project]
-name = "mtls-health-lambda"
+name = "mtls-{{name}}-lambda"
 version = "0.1.0"
-description = "Health check Lambda for mTLS API Gateway"
+description = "{{description}}"
 requires-python = ">=3.13"
 dependencies = []
 
@@ -13,7 +13,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/health"]
+packages = ["src/{{name}}"]
 
 [tool.ruff]
 target-version = "py313"
@@ -22,10 +22,7 @@ line-length = 100
 [tool.ruff.lint]
 select = ["E", "F", "I", "UP", "B", "SIM"]
 
-[tool.pytest.ini_options]
-pythonpath = ["."]
-
 [tool.pyright]
 pythonVersion = "3.13"
 typeCheckingMode = "standard"
-include = ["src", "tests"]
+include = ["src"]
