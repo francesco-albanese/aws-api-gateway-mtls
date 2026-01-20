@@ -111,15 +111,15 @@ gh secret set ECR_REGISTRY_PRODUCTION \
 
 Deploy stacks in order:
 
-```
+```text
 ECR → Lambda Build → Environmental
 ```
 
-| Step | Workflow | Purpose |
-|------|----------|---------|
-| 1 | `ecr-deploy.yml` | Create ECR repositories (once per env) |
-| 2 | `lambda-build.yml` | Build & push Lambda Docker images |
-| 3 | `terraform-deploy.yml` | Deploy API Gateway, Lambda, etc. |
+| Step | Workflow               | Purpose                                |
+| ---- | ---------------------- | -------------------------------------- |
+| 1    | `ecr-deploy.yml`       | Create ECR repositories (once per env) |
+| 2    | `lambda-build.yml`     | Build & push Lambda Docker images      |
+| 3    | `terraform-deploy.yml` | Deploy API Gateway, Lambda, etc.       |
 
 ```bash
 # Full deployment sequence
@@ -127,17 +127,6 @@ gh workflow run ecr-deploy.yml -f environment=sandbox
 gh workflow run lambda-build.yml -f environment=sandbox
 gh workflow run terraform-deploy.yml -f environment=sandbox
 ```
-
-## Verification
-
-Test GitHub Actions workflow can assume role:
-
-```bash
-# Trigger workflow manually or via PR
-gh workflow run terraform-deploy.yml -f environment=sandbox
-```
-
-Check workflow logs for successful AWS authentication without access key errors.
 
 ## Next Steps
 
@@ -148,6 +137,7 @@ Repeat for remaining environments:
 - **production**: Account 165835313193
 
 Each requires:
+
 1. OIDC provider creation in target account
 2. `terraform` role trust policy update
 3. GitHub repository secret (`AWS_ROLE_ARN_<ENV>`)

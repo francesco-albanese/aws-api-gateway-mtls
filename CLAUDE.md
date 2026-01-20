@@ -15,7 +15,7 @@ AWS API Gateway HTTP regional endpoint with mTLS enforcement. Uses certificate c
 
 ## Rules
 
-[Testing rules](.claude/rules/testing.md) - should be read when working with tests or running tests
-[Lambda rules](.claude/rules/lambda.md) - should be consulted when working with lambdas
-[Lint rules](.claude/rules/linting.md) - explains how to run linting and formatting
-[Terraform architecture](terraform/README.md) - explains the modular terraform architecture with all the available stacks
+- [Testing rules](.claude/rules/testing.md) - should be read when working with tests or running tests
+- [Lambda rules](.claude/rules/lambda.md) - should be consulted when working with lambdas
+- [Lint rules](.claude/rules/linting.md) - explains how to run linting and formatting
+- [Terraform architecture](terraform/README.md) - explains the modular terraform architecture with all the available stacks

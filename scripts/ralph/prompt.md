@@ -1,14 +1,15 @@
 # Instructions
 
-@prd.json @progress.txt
+@scritps/ralph/prd.json @scripts/ralph/progress.txt
 
 1. Decide which task to work on next. This should be the one YOU decide has the highest priority - not necessarily the first in the list.
-2. Check you're on the correct branch, if on main switch to `git checkout -b feature/ralph-prd-${id}`
+2. Check you're on the correct branch
 3. Implement that ONE story
 4. Check any feedback loops, such as types and tests.
 5. Make a git commit of that feature. ONLY WORK ON A SINGLE FEATURE.
 6. Update prd.json: `passes: true`
 7. Append learnings to progress.txt
+8. Run `code-quality-verifier` subagent to verify the work of the prd item you've just implemented
 
 ## Prioritization guidance
 
@@ -60,12 +61,9 @@ Add reusable patterns to the TOP of progress.txt:
 
 Before committing, run ALL feedback loops:
 
-1. TypeScript: pnpm run typecheck (must pass)
-2. Tests: pnpm run test (must pass)
-3. Lint: pnpm run lint (must pass)
-4. Python tests: uv run pytest (must pass)
-5. Python lint: uv run ruff format --check (must pass)
-6. Python typecheck: uv run pyright (must pass)
+1. Run typechecks (must pass)
+2. Tests: run test (must pass)
+3. Lint: run lint (must pass)
 
 Do NOT commit if any feedback loop fails. Fix issues first.
 
@@ -83,6 +81,6 @@ Fight entropy. Leave the codebase better than you found it.
 
 ## Stop Condition
 
-If, while implementing the feature, you notice that all work is complete which means that all pdr items have `passes: true`, output `<promise>COMPLETE</promise>`.
+If, while implementing the feature, you notice that all work is complete, output `<promise>COMPLETE</promise>`.
 
 Otherwise end normally.
