@@ -2,7 +2,7 @@
 
 import pytest
 
-from src.authorizer.handler import APIGatewayAuthorizerEventV2, LambdaContext
+from src.authorizer.types import APIGatewayAuthorizerEventV2, LambdaContext
 
 
 @pytest.fixture(autouse=True)

@@ -1,5 +1,15 @@
 """Custom authorizer Lambda for JWT and mTLS validation."""
 
-from .handler import handler
+from authorizer.handler import handler
+from authorizer.types import (
+    APIGatewayAuthorizerEventV2,
+    AuthorizerResponse,
+    LambdaContext,
+)
 
-__all__ = ["handler"]
+__all__ = [
+    "handler",
+    "APIGatewayAuthorizerEventV2",
+    "AuthorizerResponse",
+    "LambdaContext",
+]
