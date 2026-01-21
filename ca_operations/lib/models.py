@@ -32,3 +32,19 @@ class ClientCertResult:
     csr_path: Path
     metadata_path: Path
     serial_number: str
+
+
+@dataclass
+class RotationResult:
+    """Result from intermediate CA rotation.
+
+    Contains counts and details of rotation operation.
+    """
+
+    reissued_count: int
+    revoked_count: int
+    failed_count: int
+    new_intermediate_serial: str
+    truststore_version_id: str
+    reissued_serials: list[str]
+    failed_client_ids: list[str]
