@@ -21,6 +21,12 @@ resource "aws_lambda_function" "health" {
   timeout       = 30
   memory_size   = 128
 
+  environment {
+    variables = {
+      AWS_LAMBDA_EXEC_WRAPPER = "/opt/otel-instrument"
+    }
+  }
+
   tags = {
     Name = "mtls-api-health"
   }
@@ -55,6 +61,12 @@ resource "aws_iam_role_policy_attachment" "health_lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+# CloudWatch Application Signals for ADOT instrumentation
+resource "aws_iam_role_policy_attachment" "health_lambda_application_signals" {
+  role       = aws_iam_role.health_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchLambdaApplicationSignalsExecutionRolePolicy"
+}
+
 resource "aws_iam_role" "token_lambda" {
   name = "mtls-api-token-lambda"
 
@@ -79,6 +91,12 @@ resource "aws_iam_role_policy_attachment" "token_lambda_basic" {
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
+resource "aws_iam_role_policy_attachment" "token_lambda_application_signals" {
+  role       = aws_iam_role.token_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchLambdaApplicationSignalsExecutionRolePolicy"
+}
+
+# Token lambda needs DynamoDB read access for cert validation
 resource "aws_iam_role_policy" "token_lambda_dynamodb" {
   name = "mtls-api-token-dynamodb"
   role = aws_iam_role.token_lambda.id
@@ -118,6 +136,11 @@ resource "aws_iam_role" "authorizer_lambda" {
 resource "aws_iam_role_policy_attachment" "authorizer_lambda_basic" {
   role       = aws_iam_role.authorizer_lambda.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy_attachment" "authorizer_lambda_application_signals" {
+  role       = aws_iam_role.authorizer_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/CloudWatchLambdaApplicationSignalsExecutionRolePolicy"
 }
 
 resource "aws_lambda_permission" "api_gateway" {
@@ -165,11 +188,12 @@ resource "aws_lambda_function" "token" {
 
   environment {
     variables = {
-      COGNITO_USER_POOL_ID = aws_cognito_user_pool.mtls_api.id
-      COGNITO_CLIENT_ID    = aws_cognito_user_pool_client.mtls_api.id
-      COGNITO_CLIENT_SECRET = aws_cognito_user_pool_client.mtls_api.client_secret
-      COGNITO_DOMAIN       = "${aws_cognito_user_pool_domain.mtls_api.domain}.auth.${var.region}.amazoncognito.com"
-      DYNAMODB_TABLE_NAME  = aws_dynamodb_table.mtls_clients_metadata.name
+      COGNITO_USER_POOL_ID    = aws_cognito_user_pool.mtls_api.id
+      COGNITO_CLIENT_ID       = aws_cognito_user_pool_client.mtls_api.id
+      COGNITO_CLIENT_SECRET   = aws_cognito_user_pool_client.mtls_api.client_secret
+      COGNITO_DOMAIN          = "${aws_cognito_user_pool_domain.mtls_api.domain}.auth.${var.region}.amazoncognito.com"
+      DYNAMODB_TABLE_NAME     = aws_dynamodb_table.mtls_clients_metadata.name
+      AWS_LAMBDA_EXEC_WRAPPER = "/opt/otel-instrument"
     }
   }
 
@@ -222,8 +246,9 @@ resource "aws_lambda_function" "authorizer" {
 
   environment {
     variables = {
-      COGNITO_USER_POOL_ID = aws_cognito_user_pool.mtls_api.id
-      COGNITO_CLIENT_ID    = aws_cognito_user_pool_client.mtls_api.id
+      COGNITO_USER_POOL_ID    = aws_cognito_user_pool.mtls_api.id
+      COGNITO_CLIENT_ID       = aws_cognito_user_pool_client.mtls_api.id
+      AWS_LAMBDA_EXEC_WRAPPER = "/opt/otel-instrument"
     }
   }
 
