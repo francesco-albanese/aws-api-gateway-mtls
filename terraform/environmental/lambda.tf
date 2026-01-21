@@ -14,7 +14,7 @@ data "aws_ecr_repository" "health_lambda" {
 
 resource "aws_lambda_function" "health" {
   function_name = "mtls-api-health"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = aws_iam_role.health_lambda.arn
   package_type  = "Image"
   image_uri     = "${data.aws_ecr_repository.health_lambda.repository_url}:${var.health_lambda_image_tag}"
   architectures = ["arm64"]
@@ -26,8 +26,13 @@ resource "aws_lambda_function" "health" {
   }
 }
 
-resource "aws_iam_role" "lambda_exec" {
-  name = "mtls-api-lambda-exec"
+# Separate IAM roles per lambda - least privilege principle
+# health: basic CloudWatch logs only
+# token: basic + DynamoDB read for cert metadata
+# authorizer: basic only (uses Cognito JWKS via HTTPS, no AWS SDK calls)
+
+resource "aws_iam_role" "health_lambda" {
+  name = "mtls-api-health-lambda"
 
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
@@ -41,19 +46,42 @@ resource "aws_iam_role" "lambda_exec" {
   })
 
   tags = {
-    Name = "mtls-api-lambda-exec"
+    Name = "mtls-api-health-lambda"
   }
 }
 
-resource "aws_iam_role_policy_attachment" "lambda_basic" {
-  role       = aws_iam_role.lambda_exec.name
+resource "aws_iam_role_policy_attachment" "health_lambda_basic" {
+  role       = aws_iam_role.health_lambda.name
   policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
-# Token lambda needs DynamoDB read access for cert validation
-resource "aws_iam_role_policy" "token_dynamodb" {
+resource "aws_iam_role" "token_lambda" {
+  name = "mtls-api-token-lambda"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = {
+    Name = "mtls-api-token-lambda"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "token_lambda_basic" {
+  role       = aws_iam_role.token_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
+}
+
+resource "aws_iam_role_policy" "token_lambda_dynamodb" {
   name = "mtls-api-token-dynamodb"
-  role = aws_iam_role.lambda_exec.id
+  role = aws_iam_role.token_lambda.id
 
   policy = jsonencode({
     Version = "2012-10-17"
@@ -66,6 +94,30 @@ resource "aws_iam_role_policy" "token_dynamodb" {
       Resource = aws_dynamodb_table.mtls_clients_metadata.arn
     }]
   })
+}
+
+resource "aws_iam_role" "authorizer_lambda" {
+  name = "mtls-api-authorizer-lambda"
+
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [{
+      Action = "sts:AssumeRole"
+      Effect = "Allow"
+      Principal = {
+        Service = "lambda.amazonaws.com"
+      }
+    }]
+  })
+
+  tags = {
+    Name = "mtls-api-authorizer-lambda"
+  }
+}
+
+resource "aws_iam_role_policy_attachment" "authorizer_lambda_basic" {
+  role       = aws_iam_role.authorizer_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole"
 }
 
 resource "aws_lambda_permission" "api_gateway" {
@@ -104,7 +156,7 @@ data "aws_ecr_repository" "token_lambda" {
 
 resource "aws_lambda_function" "token" {
   function_name = "mtls-api-token"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = aws_iam_role.token_lambda.arn
   package_type  = "Image"
   image_uri     = "${data.aws_ecr_repository.token_lambda.repository_url}:${var.token_lambda_image_tag}"
   architectures = ["arm64"]
@@ -161,7 +213,7 @@ data "aws_ecr_repository" "authorizer_lambda" {
 
 resource "aws_lambda_function" "authorizer" {
   function_name = "mtls-api-authorizer"
-  role          = aws_iam_role.lambda_exec.arn
+  role          = aws_iam_role.authorizer_lambda.arn
   package_type  = "Image"
   image_uri     = "${data.aws_ecr_repository.authorizer_lambda.repository_url}:${var.authorizer_lambda_image_tag}"
   architectures = ["arm64"]
