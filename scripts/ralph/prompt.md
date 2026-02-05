@@ -3,13 +3,12 @@
 @scritps/ralph/prd.json @scripts/ralph/progress.txt
 
 1. Decide which task to work on next. This should be the one YOU decide has the highest priority - not necessarily the first in the list.
-2. Check you're on the correct branch
-3. Implement that ONE story
-4. Check any feedback loops, such as types and tests.
-5. Make a git commit of that feature. ONLY WORK ON A SINGLE FEATURE.
-6. Update prd.json: `passes: true`
-7. Append learnings to progress.txt
-8. Run `code-quality-verifier` subagent to verify the work of the prd item you've just implemented
+2. Implement that ONE story
+3. Check any feedback loops, such as types and tests.
+4. Make a git commit of that feature. ONLY WORK ON A SINGLE FEATURE.
+5. Update prd.json: `passes: true`
+6. Append learnings to progress.txt
+7. Run `code-quality-verifier` subagent to verify the work of the prd item you've just implemented
 
 ## Prioritization guidance
 
@@ -81,6 +80,6 @@ Fight entropy. Leave the codebase better than you found it.
 
 ## Stop Condition
 
-If, while implementing the feature, you notice that all work is complete, output `<promise>COMPLETE</promise>`.
+If, while implementing the feature, you notice that all work is complete meaning that all prd tasks have `passes: true`, output `<promise>COMPLETE</promise>`.
 
 Otherwise end normally.

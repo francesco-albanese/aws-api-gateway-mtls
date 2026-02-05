@@ -8,6 +8,23 @@ resource "aws_dynamodb_table" "mtls_clients_metadata" {
     type = "S"
   }
 
+  attribute {
+    name = "status"
+    type = "S"
+  }
+
+  attribute {
+    name = "issuedAt"
+    type = "S"
+  }
+
+  global_secondary_index {
+    name            = "status-issuedAt-index"
+    hash_key        = "status"
+    range_key       = "issuedAt"
+    projection_type = "ALL"
+  }
+
   ttl {
     attribute_name = "ttl"
     enabled        = true

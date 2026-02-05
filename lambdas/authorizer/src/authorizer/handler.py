@@ -19,7 +19,7 @@ def handler(event: APIGatewayAuthorizerEventV2, context: LambdaContext) -> Autho
     5. Return allow/deny decision
     """
     # Get config from environment
-    region = os.environ.get("AWS_REGION", "us-east-1")
+    region = os.environ.get("AWS_REGION", "eu-west-2")
     user_pool_id = os.environ.get("COGNITO_USER_POOL_ID", "")
     client_id = os.environ.get("COGNITO_CLIENT_ID", "")
 

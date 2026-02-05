@@ -5,7 +5,7 @@
     "description": "Create lambdas/README.md listing all 3 lambdas with purpose and handler links",
     "steps": [
       "Create lambdas/README.md",
-      "Document authorizer, health, token lambdas",
+      "Document authorizer, health, token lambdas being very ",
       "Add handler file links"
     ],
     "passes": false

@@ -5,7 +5,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError
 
-from ca_operations.lib.dynamodb_client import CertificateMetadata, DynamoDBClient
+from ca_operations.lib.dynamodb_client import DynamoDBClient, GSI_STATUS_ISSUED_AT
+from ca_operations.lib.models import CertificateMetadata
 
 
 class TestDynamoDBClient:
@@ -20,19 +21,19 @@ class TestDynamoDBClient:
     def test_get_active_certificates_empty(self, mock_boto3: MagicMock) -> None:
         """Should return empty list when no active certs."""
         mock_table = MagicMock()
-        mock_table.scan.return_value = {"Items": []}
+        mock_table.query.return_value = {"Items": []}
         mock_boto3.resource.return_value.Table.return_value = mock_table
 
         client = DynamoDBClient()
         result = client.get_active_certificates("test-table")
 
         assert result == []
-        mock_table.scan.assert_called_once()
+        mock_table.query.assert_called_once()
 
     def test_get_active_certificates_returns_metadata(self, mock_boto3: MagicMock) -> None:
         """Should return certificate metadata list."""
         mock_table = MagicMock()
-        mock_table.scan.return_value = {
+        mock_table.query.return_value = {
             "Items": [
                 {
                     "serialNumber": "AB:CD:EF:12",
@@ -53,12 +54,15 @@ class TestDynamoDBClient:
 
         assert len(result) == 1
         assert result[0]["serialNumber"] == "AB:CD:EF:12"
-        assert result[0]["client_id"] == "client-001"
+        assert result[0].get("client_id") == "client-001"
+        # Verify GSI is used
+        call_kwargs = mock_table.query.call_args[1]
+        assert call_kwargs["IndexName"] == GSI_STATUS_ISSUED_AT
 
     def test_get_active_certificates_handles_pagination(self, mock_boto3: MagicMock) -> None:
         """Should handle paginated results."""
         mock_table = MagicMock()
-        mock_table.scan.side_effect = [
+        mock_table.query.side_effect = [
             {
                 "Items": [
                     {
@@ -93,7 +97,31 @@ class TestDynamoDBClient:
         result = client.get_active_certificates("test-table")
 
         assert len(result) == 2
-        assert mock_table.scan.call_count == 2
+        assert mock_table.query.call_count == 2
+
+    def test_get_active_certificates_without_client_id(self, mock_boto3: MagicMock) -> None:
+        """Should handle items without client_id (CA certs)."""
+        mock_table = MagicMock()
+        mock_table.query.return_value = {
+            "Items": [
+                {
+                    "serialNumber": "AA:BB",
+                    "clientName": "Intermediate CA",
+                    "status": "active",
+                    "issuedAt": "2025-01-01T00:00:00+00:00",
+                    "expiry": "2026-01-01T00:00:00+00:00",
+                    "notBefore": "2025-01-01T00:00:00+00:00",
+                    "ttl": 1735689600,
+                }
+            ]
+        }
+        mock_boto3.resource.return_value.Table.return_value = mock_table
+
+        client = DynamoDBClient()
+        result = client.get_active_certificates("test-table")
+
+        assert len(result) == 1
+        assert "client_id" not in result[0]
 
     def test_revoke_certificate_success(self, mock_boto3: MagicMock) -> None:
         """Should update certificate status to revoked."""

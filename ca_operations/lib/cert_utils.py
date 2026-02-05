@@ -8,6 +8,8 @@ from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import rsa
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey
 
+from ca_operations.lib.models import CertificateMetadata
+
 
 def generate_private_key(key_size: int = 4096) -> RSAPrivateKey:
     """Generate RSA private key with specified size."""
@@ -71,22 +73,16 @@ def get_certificate_serial_hex(cert: x509.Certificate) -> str:
 
 def extract_certificate_metadata(
     cert: x509.Certificate, client_id: str | None = None
-) -> dict[str, str | int]:
+) -> CertificateMetadata:
     """Extract certificate metadata for JSON serialization (DynamoDB import).
 
     Args:
         cert: X.509 certificate to extract metadata from
         client_id: Optional client identifier (for client certs)
 
-    Returns dict with:
-        - serialNumber: hex with colons format
-        - client_id: client identifier (if provided)
-        - clientName: common name from certificate
-        - notBefore: ISO8601 timestamp
-        - expiry: ISO8601 timestamp (certificate notAfter)
-        - status: always 'active'
-        - issuedAt: ISO8601 timestamp (current UTC time)
-        - ttl: unix timestamp (expiry + 90 days for DynamoDB auto-delete)
+    Returns:
+        CertificateMetadata with serialNumber, clientName, timestamps, status, ttl.
+        client_id included only when provided (NotRequired field).
     """
     cn = cert.subject.get_attributes_for_oid(x509.NameOID.COMMON_NAME)[0].value
     if not isinstance(cn, str):
@@ -97,15 +93,15 @@ def extract_certificate_metadata(
     issued_at = datetime.now(UTC)
     ttl_datetime = not_after + timedelta(days=90)
 
-    metadata: dict[str, str | int] = {
-        "serialNumber": get_certificate_serial_hex(cert),
-        "clientName": cn,
-        "notBefore": not_before.isoformat(),
-        "expiry": not_after.isoformat(),
-        "status": "active",
-        "issuedAt": issued_at.isoformat(),
-        "ttl": int(ttl_datetime.timestamp()),
-    }
+    metadata = CertificateMetadata(
+        serialNumber=get_certificate_serial_hex(cert),
+        clientName=cn,
+        notBefore=not_before.isoformat(),
+        expiry=not_after.isoformat(),
+        status="active",
+        issuedAt=issued_at.isoformat(),
+        ttl=int(ttl_datetime.timestamp()),
+    )
 
     if client_id is not None:
         metadata["client_id"] = client_id

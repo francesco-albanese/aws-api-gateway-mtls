@@ -10,7 +10,7 @@ class MockLambdaContext(LambdaContext):
 
     function_name = "mtls-health-lambda"
     memory_limit_in_mb = 128
-    invoked_function_arn = "arn:aws:lambda:us-east-1:123456789012:function:mtls-health-lambda"
+    invoked_function_arn = "arn:aws:lambda:eu-west-2:123456789012:function:mtls-health-lambda"
     aws_request_id = "test-request-id-12345"
 
 

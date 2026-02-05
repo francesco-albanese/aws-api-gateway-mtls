@@ -1,7 +1,7 @@
 # makefiles/ca.mk
 # CA operations module for certificate authority management
 
-.PHONY: ca-bootstrap ca-truststore ca-provision-client ca-clean
+.PHONY: ca-bootstrap ca-truststore ca-provision-client ca-clean ca-test ca-lint ca-lint-fix
 
 ca-bootstrap: ## Bootstrap CA for environment (ACCOUNT=sandbox)
 ca-bootstrap: check-venv
@@ -48,3 +48,18 @@ ca-clean: ## Remove CA output for environment (ACCOUNT=sandbox)
 	fi
 	@echo "Removing CA output for environment: $(ACCOUNT)"
 	@rm -rf "ca_operations/output/$(ACCOUNT)"
+
+ca-test: ## Run ca_operations tests
+ca-test: check-venv
+	@echo "Testing ca_operations"
+	@uv run --group dev pytest ca_operations/tests -v
+
+ca-lint: ## Lint ca_operations
+ca-lint: check-venv
+	@uv run --group dev ruff check ca_operations
+	@uv run --group dev ruff format --check ca_operations
+
+ca-lint-fix: ## Fix ca_operations lint issues
+ca-lint-fix: check-venv
+	@uv run --group dev ruff check --fix ca_operations
+	@uv run --group dev ruff format ca_operations

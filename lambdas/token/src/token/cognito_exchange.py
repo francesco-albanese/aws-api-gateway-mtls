@@ -15,7 +15,7 @@ def exchange_for_cognito_token(
     """Exchange client credentials for Cognito JWT.
 
     Args:
-        domain: Cognito domain (e.g., test-domain.auth.us-east-1.amazoncognito.com)
+        domain: Cognito domain (e.g., test-domain.auth.eu-west-2.amazoncognito.com)
         client_id: Cognito app client ID
         client_secret: Cognito app client secret
         scope: OAuth scope (default: mtls-api/access)

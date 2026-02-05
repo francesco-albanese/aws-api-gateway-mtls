@@ -130,7 +130,7 @@ class TestHandler:
         mock_claims = {
             "client_id": "test-client-id",
             "scope": "mtls-api/access",
-            "iss": "https://cognito-idp.us-east-1.amazonaws.com/us-east-1_testpool",
+            "iss": "https://cognito-idp.eu-west-2.amazonaws.com/eu-west-2_testpool",
         }
         with patch("src.authorizer.handler.validate_jwt", return_value=mock_claims):
             response = handler(event_with_mtls_cert, lambda_context)

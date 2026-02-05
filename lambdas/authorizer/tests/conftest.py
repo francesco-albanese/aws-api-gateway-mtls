@@ -8,8 +8,8 @@ from src.authorizer.types import APIGatewayAuthorizerEventV2, LambdaContext
 @pytest.fixture(autouse=True)
 def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set required environment variables for all tests."""
-    monkeypatch.setenv("AWS_REGION", "us-east-1")
-    monkeypatch.setenv("COGNITO_USER_POOL_ID", "us-east-1_testpool")
+    monkeypatch.setenv("AWS_REGION", "eu-west-2")
+    monkeypatch.setenv("COGNITO_USER_POOL_ID", "eu-west-2_testpool")
     monkeypatch.setenv("COGNITO_CLIENT_ID", "test-client-id")
 
 
@@ -19,7 +19,7 @@ def lambda_context() -> LambdaContext:
     ctx = LambdaContext()
     ctx.function_name = "mtls-api-authorizer"
     ctx.memory_limit_in_mb = 128
-    ctx.invoked_function_arn = "arn:aws:lambda:us-east-1:123456789:function:mtls-api-authorizer"
+    ctx.invoked_function_arn = "arn:aws:lambda:eu-west-2:123456789:function:mtls-api-authorizer"
     ctx.aws_request_id = "test-request-id"
     return ctx
 
@@ -29,7 +29,7 @@ def base_event() -> APIGatewayAuthorizerEventV2:
     """Base authorizer event without auth headers."""
     return {
         "type": "REQUEST",
-        "routeArn": "arn:aws:execute-api:us-east-1:123456789:abc123/$default/GET/protected",
+        "routeArn": "arn:aws:execute-api:eu-west-2:123456789:abc123/$default/GET/protected",
         "routeKey": "GET /protected",
         "rawPath": "/protected",
         "rawQueryString": "",

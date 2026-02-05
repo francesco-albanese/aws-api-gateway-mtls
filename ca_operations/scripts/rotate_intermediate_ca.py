@@ -15,7 +15,7 @@ from ca_operations.lib.cert_utils import (
 )
 from ca_operations.lib.certificate_builder import CertificateBuilder
 from ca_operations.lib.config import CAConfig
-from ca_operations.lib.dynamodb_client import CertificateMetadata, DynamoDBClient
+from ca_operations.lib.dynamodb_client import DynamoDBClient
 from ca_operations.lib.logging_config import LOGGER
 from ca_operations.lib.models import RotationResult
 from ca_operations.lib.s3_client import S3Client
@@ -68,11 +68,10 @@ def rotate_intermediate_ca(
     new_intermediate_cert = deserialize_certificate(new_intermediate_cert_pem)
 
     new_intermediate_metadata = extract_certificate_metadata(new_intermediate_cert)
-    new_intermediate_serial = str(new_intermediate_metadata["serialNumber"])
+    new_intermediate_serial = new_intermediate_metadata["serialNumber"]
 
     LOGGER.info("Starting rotation with new intermediate CA: %s", new_intermediate_serial)
 
-    # Get active certificates
     active_certs = dynamodb_client.get_active_certificates(dynamodb_table)
     LOGGER.info("Found %d active certificates to re-issue", len(active_certs))
 
@@ -82,7 +81,7 @@ def rotate_intermediate_ca(
 
     # Process each active certificate
     for cert_metadata in active_certs:
-        client_id = cert_metadata["client_id"] or cert_metadata["clientName"]
+        client_id = cert_metadata.get("client_id") or cert_metadata["clientName"]
         old_serial = cert_metadata["serialNumber"]
 
         try:
@@ -102,10 +101,9 @@ def rotate_intermediate_ca(
 
             new_cert_pem = serialize_certificate(new_cert)
             new_metadata = extract_certificate_metadata(new_cert, client_id=client_id)
-            new_serial = str(new_metadata["serialNumber"])
+            new_serial = new_metadata["serialNumber"]
 
             if not dry_run:
-                # Update SSM with new cert
                 ssm_client.client.put_parameter(
                     Name=cert_path,
                     Value=new_cert_pem.decode("utf-8"),
@@ -113,23 +111,11 @@ def rotate_intermediate_ca(
                     Overwrite=True,
                 )
 
-                # Revoke old cert in DynamoDB
                 if not dynamodb_client.revoke_certificate(dynamodb_table, old_serial):
                     raise RuntimeError(f"Failed to revoke old cert {old_serial}")
                 revoked_count += 1
 
-                # Add new cert metadata to DynamoDB
-                new_cert_metadata = CertificateMetadata(
-                    serialNumber=new_serial,
-                    client_id=client_id,
-                    clientName=str(new_metadata["clientName"]),
-                    status="active",
-                    issuedAt=str(new_metadata["issuedAt"]),
-                    expiry=str(new_metadata["expiry"]),
-                    notBefore=str(new_metadata["notBefore"]),
-                    ttl=int(new_metadata["ttl"]),
-                )
-                if not dynamodb_client.put_certificate_metadata(dynamodb_table, new_cert_metadata):
+                if not dynamodb_client.put_certificate_metadata(dynamodb_table, new_metadata):
                     raise RuntimeError(f"Failed to insert new cert metadata {new_serial}")
 
             # Write to output dir for audit
@@ -145,7 +131,6 @@ def rotate_intermediate_ca(
             LOGGER.error("Failed to re-issue %s: %s", client_id, str(e))
             failed_client_ids.append(client_id)
 
-    # Update truststore in S3
     truststore_bundle = create_truststore_bundle(new_intermediate_cert_pem, root_cert_pem)
     version_id = ""
 
@@ -153,7 +138,6 @@ def rotate_intermediate_ca(
         version_id = s3_client.upload_truststore(s3_bucket, truststore_bundle)
         LOGGER.info("Updated truststore in S3: %s (version: %s)", s3_bucket, version_id)
 
-    # Save truststore locally for reference
     truststore_path = output_dir / "truststore.pem"
     truststore_path.write_bytes(truststore_bundle)
 
@@ -226,7 +210,6 @@ def main() -> int:
     if not args.output_dir:
         args.output_dir = Path(f"ca_operations/output/{args.environment}/rotation")
 
-    # Validate input files exist
     for path_arg in [args.new_intermediate_key, args.new_intermediate_cert, args.root_cert]:
         if not path_arg.exists():
             LOGGER.error("File not found: %s", path_arg)

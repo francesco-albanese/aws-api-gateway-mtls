@@ -18,7 +18,7 @@ class MockLambdaContext(LambdaContext):
 
     function_name = "mtls-token-lambda"
     memory_limit_in_mb = 128
-    invoked_function_arn = "arn:aws:lambda:us-east-1:123456789012:function:mtls-token-lambda"
+    invoked_function_arn = "arn:aws:lambda:eu-west-2:123456789012:function:mtls-token-lambda"
     aws_request_id = "test-request-id-12345"
 
 
@@ -108,7 +108,7 @@ def mock_env_vars() -> dict[str, str]:
     """Mock environment variables for Cognito config."""
     return {
         "DYNAMODB_TABLE_NAME": "mtls-clients-metadata",
-        "COGNITO_DOMAIN": "test-domain.auth.us-east-1.amazoncognito.com",
+        "COGNITO_DOMAIN": "test-domain.auth.eu-west-2.amazoncognito.com",
         "COGNITO_CLIENT_ID": "test-client-id",
         "COGNITO_CLIENT_SECRET": "test-client-secret",
     }

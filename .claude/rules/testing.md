@@ -1,6 +1,6 @@
 # Testing Rules
 
-- how to run tests `uv run pytest scopes_entitlements_management/tests/ -v`
+- how to run tests `uv run pytest -v`
 
 when defining tests within a Lambda folder, you need to navigate one folder up to find the handler
 DON'T DO THIS

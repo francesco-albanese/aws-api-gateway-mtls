@@ -2,6 +2,20 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NotRequired, TypedDict
+
+
+class CertificateMetadata(TypedDict):
+    """Certificate metadata from DynamoDB."""
+
+    serialNumber: str
+    client_id: NotRequired[str]
+    clientName: str
+    status: str
+    issuedAt: str
+    expiry: str
+    notBefore: str
+    ttl: int
 
 
 @dataclass
