@@ -81,8 +81,14 @@ def rotate_intermediate_ca(
 
     # Process each active certificate
     for cert_metadata in active_certs:
-        client_id = cert_metadata.get("client_id") or cert_metadata["clientName"]
-        old_serial = cert_metadata["serialNumber"]
+        old_serial = cert_metadata.get("serialNumber")
+        client_name = cert_metadata.get("clientName")
+        if not old_serial or not client_name:
+            LOGGER.warning("Skipping cert with missing serialNumber/clientName: %s", cert_metadata)
+            failed_client_ids.append(client_name or "unknown")
+            continue
+
+        client_id = cert_metadata.get("client_id") or client_name
 
         try:
             # Fetch existing client cert from SSM
@@ -104,19 +110,19 @@ def rotate_intermediate_ca(
             new_serial = new_metadata["serialNumber"]
 
             if not dry_run:
-                ssm_client.client.put_parameter(
-                    Name=cert_path,
-                    Value=new_cert_pem.decode("utf-8"),
-                    Type="String",
-                    Overwrite=True,
-                )
-
                 if not dynamodb_client.revoke_certificate(dynamodb_table, old_serial):
                     raise RuntimeError(f"Failed to revoke old cert {old_serial}")
                 revoked_count += 1
 
                 if not dynamodb_client.put_certificate_metadata(dynamodb_table, new_metadata):
                     raise RuntimeError(f"Failed to insert new cert metadata {new_serial}")
+
+                ssm_client.client.put_parameter(
+                    Name=cert_path,
+                    Value=new_cert_pem.decode("utf-8"),
+                    Type="String",
+                    Overwrite=True,
+                )
 
             # Write to output dir for audit
             client_output_dir = output_dir / client_id
@@ -134,7 +140,13 @@ def rotate_intermediate_ca(
     truststore_bundle = create_truststore_bundle(new_intermediate_cert_pem, root_cert_pem)
     version_id = ""
 
-    if not dry_run:
+    if failed_client_ids:
+        LOGGER.warning(
+            "Skipping truststore update — %d client(s) failed: %s",
+            len(failed_client_ids),
+            failed_client_ids,
+        )
+    elif not dry_run:
         version_id = s3_client.upload_truststore(s3_bucket, truststore_bundle)
         LOGGER.info("Updated truststore in S3: %s (version: %s)", s3_bucket, version_id)
 

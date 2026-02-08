@@ -3,6 +3,17 @@
 from typing import NotRequired, TypedDict
 
 
+class CertMetadata(TypedDict):
+    """DynamoDB cert metadata item."""
+
+    serialNumber: str
+    client_id: str
+    clientName: str
+    status: str
+    issuedAt: str
+    expiry: str
+
+
 class CertValidity(TypedDict):
     notBefore: str
     notAfter: str

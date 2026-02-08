@@ -1,11 +1,12 @@
 """Tests for DynamoDB client module."""
 
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
 from botocore.exceptions import ClientError
 
-from ca_operations.lib.dynamodb_client import DynamoDBClient, GSI_STATUS_ISSUED_AT
+from ca_operations.lib.dynamodb_client import GSI_STATUS_ISSUED_AT, DynamoDBClient
 from ca_operations.lib.models import CertificateMetadata
 
 
@@ -13,7 +14,7 @@ class TestDynamoDBClient:
     """Tests for DynamoDBClient class."""
 
     @pytest.fixture
-    def mock_boto3(self) -> MagicMock:
+    def mock_boto3(self) -> Generator[MagicMock]:
         """Mock boto3 for DynamoDB."""
         with patch("ca_operations.lib.dynamodb_client.boto3") as mock:
             yield mock

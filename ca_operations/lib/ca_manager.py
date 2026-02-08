@@ -60,6 +60,7 @@ class CAManager:
             organizational_unit=self.config.organizational_unit,
             common_name="Francesco Albanese Root CA",
         )
+        # The certificate is self signed
         root_cert = CertificateBuilder.build_root_ca(
             subject_dn=root_dn,
             private_key=root_key,

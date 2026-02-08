@@ -2,15 +2,14 @@
 
 import pytest
 
-from src.authorizer.types import APIGatewayAuthorizerEventV2, LambdaContext
+from src.authorizer.types import APIGatewayAuthorizerEventV2, CertMetadata, LambdaContext
 
 
 @pytest.fixture(autouse=True)
 def mock_env_vars(monkeypatch: pytest.MonkeyPatch) -> None:
     """Set required environment variables for all tests."""
     monkeypatch.setenv("AWS_REGION", "eu-west-2")
-    monkeypatch.setenv("COGNITO_USER_POOL_ID", "eu-west-2_testpool")
-    monkeypatch.setenv("COGNITO_CLIENT_ID", "test-client-id")
+    monkeypatch.setenv("DYNAMODB_TABLE_NAME", "mtls-clients-metadata")
 
 
 @pytest.fixture
@@ -26,18 +25,18 @@ def lambda_context() -> LambdaContext:
 
 @pytest.fixture
 def base_event() -> APIGatewayAuthorizerEventV2:
-    """Base authorizer event without auth headers."""
+    """Base authorizer event without mTLS cert."""
     return {
         "type": "REQUEST",
-        "routeArn": "arn:aws:execute-api:eu-west-2:123456789:abc123/$default/GET/protected",
-        "routeKey": "GET /protected",
-        "rawPath": "/protected",
+        "routeArn": "arn:aws:execute-api:eu-west-2:123456789:abc123/$default/GET/health",
+        "routeKey": "GET /health",
+        "rawPath": "/health",
         "rawQueryString": "",
         "headers": {},
         "requestContext": {
             "accountId": "123456789",
             "apiId": "abc123",
-            "http": {"method": "GET", "path": "/protected"},
+            "http": {"method": "GET", "path": "/health"},
         },
     }
 
@@ -48,7 +47,7 @@ def event_with_mtls_cert(base_event: APIGatewayAuthorizerEventV2) -> APIGatewayA
     base_event["requestContext"] = {
         "accountId": "123456789",
         "apiId": "abc123",
-        "http": {"method": "GET", "path": "/protected"},
+        "http": {"method": "GET", "path": "/health"},
         "authentication": {
             "clientCert": {
                 "serialNumber": "ABC123DEF456",
@@ -56,7 +55,7 @@ def event_with_mtls_cert(base_event: APIGatewayAuthorizerEventV2) -> APIGatewayA
                 "issuerDN": "CN=IntermediateCA,O=TestOrg",
                 "validity": {
                     "notBefore": "2025-01-01T00:00:00Z",
-                    "notAfter": "2026-01-01T00:00:00Z",
+                    "notAfter": "2027-01-01T00:00:00Z",
                 },
             }
         },
@@ -64,9 +63,53 @@ def event_with_mtls_cert(base_event: APIGatewayAuthorizerEventV2) -> APIGatewayA
     return base_event
 
 
-def event_with_bearer_token(
-    event: APIGatewayAuthorizerEventV2, token: str
-) -> APIGatewayAuthorizerEventV2:
-    """Add Bearer token to event."""
-    event["headers"] = {"authorization": f"Bearer {token}"}
-    return event
+@pytest.fixture
+def active_cert_metadata() -> CertMetadata:
+    """Active certificate metadata from DynamoDB."""
+    return {
+        "serialNumber": "ABC123DEF456",
+        "client_id": "test-client",
+        "clientName": "Test Client",
+        "status": "active",
+        "issuedAt": "2025-01-01T00:00:00Z",
+        "expiry": "2027-01-01T00:00:00Z",
+    }
+
+
+@pytest.fixture
+def revoked_cert_metadata() -> CertMetadata:
+    """Revoked certificate metadata."""
+    return {
+        "serialNumber": "ABC123DEF456",
+        "client_id": "test-client",
+        "clientName": "Test Client",
+        "status": "revoked",
+        "issuedAt": "2025-01-01T00:00:00Z",
+        "expiry": "2027-01-01T00:00:00Z",
+    }
+
+
+@pytest.fixture
+def expired_cert_metadata() -> CertMetadata:
+    """Expired certificate metadata."""
+    return {
+        "serialNumber": "ABC123DEF456",
+        "client_id": "test-client",
+        "clientName": "Test Client",
+        "status": "active",
+        "issuedAt": "2023-01-01T00:00:00Z",
+        "expiry": "2024-01-01T00:00:00Z",
+    }
+
+
+@pytest.fixture
+def mismatched_cert_metadata() -> CertMetadata:
+    """Metadata with client_id that doesn't match CN."""
+    return {
+        "serialNumber": "ABC123DEF456",
+        "client_id": "different-client",
+        "clientName": "Different Client",
+        "status": "active",
+        "issuedAt": "2025-01-01T00:00:00Z",
+        "expiry": "2027-01-01T00:00:00Z",
+    }

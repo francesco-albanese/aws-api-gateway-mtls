@@ -1,4 +1,4 @@
-"""Custom authorizer Lambda for JWT and mTLS validation."""
+"""Custom authorizer Lambda for mTLS cert validation."""
 
 from authorizer.handler import handler
 from authorizer.types import (

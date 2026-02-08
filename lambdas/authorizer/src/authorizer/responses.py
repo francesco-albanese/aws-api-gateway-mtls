@@ -8,13 +8,21 @@ def deny_response() -> AuthorizerResponse:
     return {"isAuthorized": False}
 
 
-def allow_response(serial_number: str, client_id: str, scopes: list[str]) -> AuthorizerResponse:
-    """Return allow response with context."""
+def allow_response(
+    serial_number: str,
+    client_cn: str,
+    client_id: str,
+    validity_not_before: str,
+    validity_not_after: str,
+) -> AuthorizerResponse:
+    """Return allow response with mTLS context."""
     return {
         "isAuthorized": True,
         "context": {
             "serialNumber": serial_number,
+            "clientCN": client_cn,
             "clientId": client_id,
-            "scopes": ",".join(scopes),
+            "validityNotBefore": validity_not_before,
+            "validityNotAfter": validity_not_after,
         },
     }

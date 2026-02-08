@@ -39,7 +39,7 @@ make certificate-bootstrap-apply ACCOUNT=sandbox
 
 ### environmental/
 
-**Purpose:** Regular infrastructure (API Gateway, Cognito, Lambda, DynamoDB, Route53)
+**Purpose:** Regular infrastructure (API Gateway, Lambda, DynamoDB, Route53)
 
 **Certificate Integration:**
 

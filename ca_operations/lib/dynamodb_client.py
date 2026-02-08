@@ -1,5 +1,6 @@
 """DynamoDB client for certificate metadata operations."""
 
+import logging
 from typing import cast
 
 import boto3
@@ -10,6 +11,8 @@ from mypy_boto3_dynamodb.service_resource import DynamoDBServiceResource
 from mypy_boto3_dynamodb.type_defs import TableAttributeValueTypeDef
 
 from ca_operations.lib.models import CertificateMetadata
+
+logger = logging.getLogger(__name__)
 
 GSI_STATUS_ISSUED_AT = "status-issuedAt-index"
 
@@ -98,7 +101,8 @@ class DynamoDBClient:
                 ExpressionAttributeValues={":status": "revoked"},
             )
             return True
-        except ClientError:
+        except ClientError as e:
+            logger.error("Failed to revoke cert %s: %s", serial_number, e)
             return False
 
     def put_certificate_metadata(self, table_name: str, metadata: CertificateMetadata) -> bool:
@@ -114,9 +118,8 @@ class DynamoDBClient:
         table = self.resource.Table(table_name)
 
         try:
-            table.put_item(
-                Item=cast(dict[str, TableAttributeValueTypeDef], dict(metadata))
-            )
+            table.put_item(Item=cast(dict[str, TableAttributeValueTypeDef], dict(metadata)))
             return True
-        except ClientError:
+        except ClientError as e:
+            logger.error("Failed to put cert metadata %s: %s", metadata.get("serialNumber"), e)
             return False

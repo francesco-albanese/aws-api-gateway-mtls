@@ -6,7 +6,6 @@ from cryptography.x509 import oid
 
 @dataclass
 class CAConfig:
-
     country: str = "GB"
     state: str = "London"
     locality: str = "London"

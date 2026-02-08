@@ -4,29 +4,27 @@ import json
 from typing import NotRequired, TypedDict
 
 
-class CertValidity(TypedDict):
-    notBefore: str
-    notAfter: str
+class LambdaAuthorizerContext(TypedDict, total=False):
+    """Context values set by the mTLS authorizer Lambda."""
 
-
-class ClientCert(TypedDict, total=False):
-    clientCertPem: str
-    subjectDN: str
-    issuerDN: str
+    clientCN: str
     serialNumber: str
-    validity: CertValidity
+    clientId: str
+    validityNotBefore: str
+    validityNotAfter: str
 
 
-class Authentication(TypedDict, total=False):
-    clientCert: ClientCert
+AuthorizerContext = TypedDict("AuthorizerContext", {"lambda": LambdaAuthorizerContext}, total=False)
 
 
 class RequestContext(TypedDict, total=False):
-    authentication: Authentication
+    """Request context from API Gateway."""
+
+    authorizer: AuthorizerContext
 
 
 class APIGatewayProxyEventV2(TypedDict, total=False):
-    """API Gateway HTTP API v2 event (partial, mTLS-relevant fields)."""
+    """API Gateway HTTP API v2 event (partial, authorizer-relevant fields)."""
 
     requestContext: RequestContext
 
@@ -49,21 +47,29 @@ class LambdaContext:
 
 
 def handler(event: APIGatewayProxyEventV2, context: LambdaContext) -> APIGatewayProxyResponseV2:
-    """Return health status with mTLS client cert info."""
+    """Return health status with mTLS client cert info from authorizer context."""
     request_context = event.get("requestContext", {})
-    authentication = request_context.get("authentication", {})
-    client_cert = authentication.get("clientCert", {})
+    authorizer = request_context.get("authorizer", {})
+    # API Gateway nests lambda authorizer context under "lambda" key
+    auth_context = authorizer.get("lambda", {})
 
-    subject_dn = client_cert.get("subjectDN", "")
-    client_cn = subject_dn.split("CN=")[-1].split(",")[0] if subject_dn else None
+    client_cn = auth_context.get("clientCN") or None
+    serial_number = auth_context.get("serialNumber") or None
+    validity = {}
+    not_before = auth_context.get("validityNotBefore", "")
+    not_after = auth_context.get("validityNotAfter", "")
+    if not_before:
+        validity["notBefore"] = not_before
+    if not_after:
+        validity["notAfter"] = not_after
 
     response_body = {
         "status": "healthy",
         "mtls": {
-            "enabled": bool(client_cert),
+            "enabled": bool(serial_number),
             "clientCN": client_cn,
-            "serialNumber": client_cert.get("serialNumber"),
-            "validity": client_cert.get("validity", {}),
+            "serialNumber": serial_number,
+            "validity": validity,
         },
     }
 

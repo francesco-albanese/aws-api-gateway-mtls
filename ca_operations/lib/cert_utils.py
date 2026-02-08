@@ -60,7 +60,7 @@ def generate_serial_number() -> int:
     Returns:
         Integer serial number for x509.CertificateBuilder.serial_number()
     """
-    return uuid.uuid4().int
+    return int(uuid.uuid4())
 
 
 def get_certificate_serial_hex(cert: x509.Certificate) -> str:

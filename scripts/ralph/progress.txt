@@ -3,8 +3,8 @@ Started: 2026-01-21
 
 ## Codebase Patterns
 - terraform: one role per lambda (least privilege)
-- authorizer uses Cognito JWKS via HTTPS, no SDK calls
-- token lambda only one needing DynamoDB access
+- authorizer validates mTLS via DynamoDB cert metadata lookup
+- authorizer lambda needs DynamoDB access
 - container lambdas: ADOT layer via Dockerfile extraction (not Lambda layers)
 - boto3 types: use `Any` annotation for resource/client to avoid pyright errors
 - ca_operations tests: use 2048 key size for speed, mocks for AWS clients
@@ -12,7 +12,7 @@ Started: 2026-01-21
 ## Key Files
 - terraform/environmental/lambda.tf - lambda definitions + IAM roles
 - lambdas/Dockerfile - shared multi-stage Dockerfile for all lambdas
-- lambdas/authorizer/src/authorizer/ - modular structure: types.py, jwt_validator.py, event_parser.py, responses.py, handler.py
+- lambdas/authorizer/src/authorizer/ - modular structure: types.py, cert_extractor.py, cert_metadata.py, cert_validator.py, responses.py, handler.py
 - ca_operations/lib/certificate_builder.py - cert building including reissue_client_certificate for rotation
 - ca_operations/scripts/rotate_intermediate_ca.py - full rotation script with dry-run support
 

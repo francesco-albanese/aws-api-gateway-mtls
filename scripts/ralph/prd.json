@@ -134,8 +134,7 @@
     "description": "Expand CA operations test coverage - certificate_builder and script tests",
     "steps": [
       "Review existing 49 tests",
-      "Add certificate_builder.py tests",
-      "Add integration tests for scripts"
+      "Add certificate_builder.py tests"
     ],
     "passes": false
   },

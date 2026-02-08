@@ -8,7 +8,8 @@
       "Skill(ralph-bootstrap)",
       "Bash(uv sync:*)",
       "Bash(uv run pre-commit run:*)",
-      "WebSearch"
+      "WebSearch",
+      "Bash(uv run pytest:*)"
     ]
   },
   "outputStyle": "default",

@@ -1,5 +1,6 @@
 """Tests for S3 client module."""
 
+from collections.abc import Generator
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -12,7 +13,7 @@ class TestS3Client:
     """Tests for S3Client class."""
 
     @pytest.fixture
-    def mock_boto3(self) -> MagicMock:
+    def mock_boto3(self) -> Generator[MagicMock]:
         """Mock boto3 for S3."""
         with patch("ca_operations.lib.s3_client.boto3") as mock:
             yield mock
