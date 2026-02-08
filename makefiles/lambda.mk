@@ -1,7 +1,7 @@
 # Lambda build and management
 LAMBDA_DIR := lambdas
 
-.PHONY: lambda-build lambda-build-% lambda-test lambda-lint
+.PHONY: lambda-build lambda-build-% lambda-test lambda-test-% lambda-lint lambda-lint-% lambda-lint-fix lambda-lint-fix-%
 
 lambda-build: ## Build all Lambda container images locally
 	@for dir in $(LAMBDA_DIR)/*/; do \
@@ -26,9 +26,23 @@ lambda-test-%: ## Test specific Lambda
 	@cd $(LAMBDA_DIR)/$* && uv run pytest
 
 lambda-lint: ## Lint all Lambda code
-	@uv run ruff check $(LAMBDA_DIR)
-	@uv run ruff format --check $(LAMBDA_DIR)
+	@for dir in $(LAMBDA_DIR)/*/; do \
+		name=$$(basename $$dir); \
+		echo "Linting Lambda: $$name"; \
+		(cd $$dir && uv run ruff check . && uv run ruff format --check .); \
+	done
+
+lambda-lint-%: ## Lint specific Lambda
+	@echo "Linting Lambda: $*"
+	@cd $(LAMBDA_DIR)/$* && uv run ruff check . && uv run ruff format --check .
 
 lambda-lint-fix: ## Fix Lambda lint issues
-	@uv run ruff check --fix $(LAMBDA_DIR)
-	@uv run ruff format $(LAMBDA_DIR)
+	@for dir in $(LAMBDA_DIR)/*/; do \
+		name=$$(basename $$dir); \
+		echo "Fixing Lambda: $$name"; \
+		(cd $$dir && uv run ruff check --fix . && uv run ruff format .); \
+	done
+
+lambda-lint-fix-%: ## Fix specific Lambda lint
+	@echo "Fixing Lambda: $*"
+	@cd $(LAMBDA_DIR)/$* && uv run ruff check --fix . && uv run ruff format .

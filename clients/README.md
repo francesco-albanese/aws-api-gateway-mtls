@@ -1,4 +1,17 @@
-# Client Testing
+# Client Provisioning and testing
+
+## How to provision a new client
+
+- Manually run Github workflow [client-provision](../.github/workflows/client-provision.yml)
+- Reads the config file per environment, [example](./sandbox.json)
+- extracts the client ids to be provisioned
+- creates a private+public key pair
+- signs the CSR with the client's private key
+- fetches the intermediate CA key and cert from SSM Parameter Store
+- Intermediate CA issues certificate
+- Client private key, public cert and certificate metadata are stored in AWS via Terraform
+
+## Manual test
 
 Manual testing of health endpoint with mTLS certificates.
 

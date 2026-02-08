@@ -10,7 +10,7 @@ class MockLambdaContext(LambdaContext):
 
     function_name = "mtls-health-lambda"
     memory_limit_in_mb = 128
-    invoked_function_arn = "arn:aws:lambda:us-east-1:123456789012:function:mtls-health-lambda"
+    invoked_function_arn = "arn:aws:lambda:eu-west-2:123456789012:function:mtls-health-lambda"
     aws_request_id = "test-request-id-12345"
 
 
@@ -21,20 +21,17 @@ def mock_context() -> LambdaContext:
 
 
 @pytest.fixture
-def event_with_valid_mtls_cert() -> APIGatewayProxyEventV2:
-    """Event with full mTLS client certificate metadata."""
+def event_with_authorizer_context() -> APIGatewayProxyEventV2:
+    """Event with full authorizer context from mTLS authorizer."""
     return {
         "requestContext": {
-            "authentication": {
-                "clientCert": {
-                    "clientCertPem": "-----BEGIN CERTIFICATE-----\nMIIC...",
-                    "subjectDN": "CN=test-client,O=TestOrg,C=US",
-                    "issuerDN": "CN=Intermediate CA,O=TestOrg,C=US",
+            "authorizer": {
+                "lambda": {
                     "serialNumber": "1234567890ABCDEF",
-                    "validity": {
-                        "notBefore": "Jan 15 00:00:00 2026 GMT",
-                        "notAfter": "Jan 15 00:00:00 2027 GMT",
-                    },
+                    "clientCN": "test-client",
+                    "clientId": "test-client",
+                    "validityNotBefore": "2025-01-01T00:00:00Z",
+                    "validityNotAfter": "2027-01-01T00:00:00Z",
                 }
             }
         }
@@ -42,9 +39,9 @@ def event_with_valid_mtls_cert() -> APIGatewayProxyEventV2:
 
 
 @pytest.fixture
-def event_without_client_cert() -> APIGatewayProxyEventV2:
-    """Event without mTLS client certificate (mtls disabled or missing)."""
-    return {"requestContext": {"authentication": {}}}
+def event_without_authorizer_context() -> APIGatewayProxyEventV2:
+    """Event without authorizer context."""
+    return {"requestContext": {"authorizer": {}}}
 
 
 @pytest.fixture

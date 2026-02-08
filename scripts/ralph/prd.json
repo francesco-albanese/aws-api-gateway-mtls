@@ -1,6 +1,153 @@
-{
-  "category": "functional",
-  "description": "description of feature",
-  "steps": ["", "", ""],
-  "passes": false
-}
+[
+  {
+    "id": "PRD-DOC-001",
+    "category": "documentation",
+    "description": "Create lambdas/README.md listing all 3 lambdas with purpose and handler links",
+    "steps": [
+      "Create lambdas/README.md",
+      "Document authorizer, health, token lambdas being very ",
+      "Add handler file links"
+    ],
+    "passes": false
+  },
+  {
+    "id": "PRD-DOC-002",
+    "category": "documentation",
+    "description": "Create diagrams/ folder with mermaid flow diagrams for mTLS, token exchange, auth flow",
+    "steps": [
+      "Create diagrams/ dir",
+      "Add mtls-flow.mmd",
+      "Add token-exchange.mmd",
+      "Add architecture.mmd"
+    ],
+    "passes": false
+  },
+  {
+    "id": "PRD-DOC-003",
+    "category": "documentation",
+    "description": "Rewrite main README.md - portfolio ready with security features and architecture",
+    "steps": [
+      "Rewrite README.md",
+      "Add security features section",
+      "Add mTLS flow explanation",
+      "Add architecture diagram link"
+    ],
+    "passes": false
+  },
+  {
+    "id": "PRD-DOC-004",
+    "category": "documentation",
+    "description": "Create .github/actions/README.md documenting configure-aws-env and setup-python-uv",
+    "steps": [
+      "Create .github/actions/README.md",
+      "Document both custom actions"
+    ],
+    "passes": false
+  },
+  {
+    "id": "PRD-DOC-005",
+    "category": "documentation",
+    "description": "Create .github/workflows/README.md documenting all 7 workflows with deployment order",
+    "steps": [
+      "Create .github/workflows/README.md",
+      "Document all workflows",
+      "Add deployment sequence"
+    ],
+    "passes": false
+  },
+  {
+    "id": "PRD-DOC-006",
+    "category": "documentation",
+    "description": "Update terraform/README.md with ecr and client-provisioning stack docs",
+    "steps": [
+      "Update terraform/README.md",
+      "Add ecr/ stack",
+      "Add client-provisioning/ stack"
+    ],
+    "passes": false
+  },
+  {
+    "id": "PRD-DOC-007",
+    "category": "documentation",
+    "description": "Update clients/README.md with provisioning process via GitHub workflow",
+    "steps": [
+      "Update clients/README.md",
+      "Add GH workflow provisioning steps",
+      "Add client lifecycle"
+    ],
+    "passes": false
+  },
+  {
+    "id": "PRD-SEC-001",
+    "category": "security",
+    "description": "Split lambda execution roles - health: basic only, token: +DynamoDB, authorizer: basic only",
+    "steps": [
+      "Create health_lambda_role",
+      "Create token_lambda_role with DynamoDB",
+      "Create authorizer_lambda_role",
+      "Update lambda.tf",
+      "Run terraform plan"
+    ],
+    "passes": true
+  },
+  {
+    "id": "PRD-OBS-001",
+    "category": "observability",
+    "description": "Add CloudWatch Application Signals with ADOT auto-instrumentation for all lambdas",
+    "steps": [
+      "Add ADOT Lambda layer for eu-west-2",
+      "Attach CloudWatchLambdaApplicationSignalsExecutionRolePolicy",
+      "Set OTEL env vars",
+      "Test in CloudWatch console"
+    ],
+    "passes": true
+  },
+  {
+    "id": "PRD-FEAT-001",
+    "category": "functional",
+    "description": "Intermediate cert rotation - auto re-sign active certs, update truststore, exclude revoked",
+    "steps": [
+      "Create rotate_intermediate_ca.py script",
+      "Query active certs from DynamoDB",
+      "Re-sign each cert with new intermediate",
+      "Update truststore.pem in S3",
+      "Update DynamoDB metadata",
+      "Add unit tests"
+    ],
+    "passes": true
+  },
+  {
+    "id": "PRD-TEST-001",
+    "category": "testing",
+    "description": "Expand lambda unit test coverage with edge cases focused on real behavior",
+    "steps": [
+      "Review existing 55 tests",
+      "Identify missing edge cases",
+      "Add tests for error paths",
+      "Run coverage report"
+    ],
+    "passes": false
+  },
+  {
+    "id": "PRD-TEST-002",
+    "category": "testing",
+    "description": "Expand CA operations test coverage - certificate_builder and script tests",
+    "steps": [
+      "Review existing 49 tests",
+      "Add certificate_builder.py tests"
+    ],
+    "passes": false
+  },
+  {
+    "id": "PRD-REFACTOR-001",
+    "category": "refactoring",
+    "description": "Refactor lambda authorizer",
+    "steps": [
+      "Read current implementation of lambda authorizer",
+      "refactor it extracting out the utility functions into separate modules",
+      "Update the main handler to use these utility functions",
+      "Test the refactored code to ensure functionality remains unchanged"
+    ],
+    "passes": true
+  }
+]

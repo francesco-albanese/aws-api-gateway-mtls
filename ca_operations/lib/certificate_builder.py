@@ -92,12 +92,6 @@ class CertificateBuilder:
         Raises:
             ValueError: If CSR signature is invalid
         """
-        from .cert_utils import (
-            extract_csr_public_key,
-            extract_csr_subject,
-            validate_csr_signature,
-        )
-
         if not validate_csr_signature(csr):
             raise ValueError("CSR signature validation failed")
 
@@ -200,3 +194,58 @@ class CertificateBuilder:
         )
 
         return builder.sign(issuer_key, hashes.SHA256())
+
+    @staticmethod
+    def reissue_client_certificate(
+        original_cert: x509.Certificate,
+        new_issuer_cert: x509.Certificate,
+        new_issuer_key: RSAPrivateKey,
+        validity_days: int,
+    ) -> x509.Certificate:
+        """Re-issue client certificate with new issuer (for CA rotation).
+
+        Preserves the original certificate's subject and public key,
+        but signs with a new intermediate CA. Used during CA rotation
+        to maintain client continuity without regenerating keys.
+
+        Args:
+            original_cert: Existing client certificate to re-issue
+            new_issuer_cert: New Intermediate CA certificate (issuer)
+            new_issuer_key: New Intermediate CA private key for signing
+            validity_days: Certificate validity period in days
+
+        Returns:
+            New X.509 end-entity certificate signed by new Intermediate CA
+        """
+        not_before = datetime.now(UTC)
+        not_after = not_before + timedelta(days=validity_days)
+
+        builder = (
+            x509.CertificateBuilder()
+            .subject_name(original_cert.subject)
+            .issuer_name(new_issuer_cert.subject)
+            .public_key(original_cert.public_key())
+            .serial_number(generate_serial_number())
+            .not_valid_before(not_before)
+            .not_valid_after(not_after)
+            .add_extension(
+                x509.BasicConstraints(ca=False, path_length=None),
+                critical=True,
+            )
+            .add_extension(
+                x509.KeyUsage(
+                    digital_signature=True,
+                    content_commitment=False,
+                    key_encipherment=True,
+                    data_encipherment=False,
+                    key_agreement=False,
+                    key_cert_sign=False,
+                    crl_sign=False,
+                    encipher_only=False,
+                    decipher_only=False,
+                ),
+                critical=False,
+            )
+        )
+
+        return builder.sign(new_issuer_key, hashes.SHA256())

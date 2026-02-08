@@ -1,10 +1,64 @@
 # Ralph Progress Log
-Started: YYYY-MM-DD
+Started: 2026-01-21
 
 ## Codebase Patterns
-- (Add patterns discovered during implementation)
+- terraform: one role per lambda (least privilege)
+- authorizer validates mTLS via DynamoDB cert metadata lookup
+- authorizer lambda needs DynamoDB access
+- container lambdas: ADOT layer via Dockerfile extraction (not Lambda layers)
+- boto3 types: use `Any` annotation for resource/client to avoid pyright errors
+- ca_operations tests: use 2048 key size for speed, mocks for AWS clients
 
 ## Key Files
-- (List important files for context)
+- terraform/environmental/lambda.tf - lambda definitions + IAM roles
+- lambdas/Dockerfile - shared multi-stage Dockerfile for all lambdas
+- lambdas/authorizer/src/authorizer/ - modular structure: types.py, cert_extractor.py, cert_metadata.py, cert_validator.py, responses.py, handler.py
+- ca_operations/lib/certificate_builder.py - cert building including reissue_client_certificate for rotation
+- ca_operations/scripts/rotate_intermediate_ca.py - full rotation script with dry-run support
+
+---
+
+## 2026-01-21 - PRD-SEC-001
+- Split shared lambda_exec role into 3 separate roles
+- Files: terraform/environmental/lambda.tf
+- Decisions: authorizer doesn't need DynamoDB (uses JWKS via HTTPS), PRD description was inaccurate - updated
+- Branch: refactor/lambda-iam-least-privilege
+- Commit: 450be5d
+
+---
+
+## 2026-01-21 - PRD-OBS-001
+- Added CloudWatch Application Signals with ADOT auto-instrumentation
+- Files: lambdas/Dockerfile, terraform/environmental/lambda.tf
+- Decisions: container images can't use Lambda layers, must extract layer.zip into /opt via Dockerfile
+- ADOT v0.14.1 (Python arm64), AWS_LAMBDA_EXEC_WRAPPER=/opt/otel-instrument
+- IAM: CloudWatchLambdaApplicationSignalsExecutionRolePolicy attached
+- Branch: feat/cloudwatch-application-signals
+- Commit: 84a0138
+
+---
+
+## 2026-01-21 - PRD-REFACTOR-001
+- Modularized authorizer lambda into single-responsibility modules
+- Files: lambdas/authorizer/src/authorizer/{types,jwt_validator,event_parser,responses,handler,__init__}.py
+- Decisions: handler.py now orchestration-only, utilities in dedicated modules
+- Removed dead code: IAMPolicyStatement, IAMPolicyDocument
+- Tests updated to import from new module locations
+- Branch: refactor/lambda-authorizer-modular
+- Commit: 2662554
+
+---
+
+## 2026-01-21 - PRD-FEAT-001
+- Implemented intermediate CA rotation with client cert re-issue
+- Files: ca_operations/lib/{certificate_builder,dynamodb_client,s3_client,models}.py, ca_operations/scripts/rotate_intermediate_ca.py
+- New tests: test_certificate_builder.py, test_dynamodb_client.py, test_s3_client.py (16 new tests, 65 total)
+- Decisions:
+  - Re-issue certs don't need CSR (extract public key from existing cert)
+  - DynamoDB scan OK for small cert table (paginated)
+  - Old certs marked revoked, new certs get new serial number
+  - Dry-run mode for safe preview
+- Branch: feat/intermediate-cert-rotation
+- Commit: cd2c3de
 
 ---
