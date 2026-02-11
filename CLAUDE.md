@@ -16,7 +16,6 @@ AWS API Gateway HTTP regional endpoint with mTLS enforcement. Uses certificate c
 ## Git Hooks
 
 - Never run `pre-commit`. Use `prek` instead (`prek run --all-files`)
-- Always use `--no-verify` when committing
 
 ## Rules
 
