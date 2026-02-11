@@ -7,7 +7,7 @@
       "Bash(find:*)",
       "Skill(ralph-bootstrap)",
       "Bash(uv sync:*)",
-      "Bash(uv run pre-commit run:*)",
+      "Bash(prek run)",
       "WebSearch",
       "Bash(uv run pytest:*)"
     ]

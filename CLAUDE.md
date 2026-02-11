@@ -13,6 +13,11 @@ AWS API Gateway HTTP regional endpoint with mTLS enforcement. Uses certificate c
 - [Github Actions and workflows](.github/)
 - [Instructions on what operations to run on CI and what order](.github/README.md)
 
+## Git Hooks
+
+- Never run `pre-commit`. Use `prek` instead (`prek run --all-files`)
+- Always use `--no-verify` when committing
+
 ## Rules
 
 - [Testing rules](.claude/rules/testing.md) - should be read when working with tests or running tests

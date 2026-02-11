@@ -1,9 +1,13 @@
 """DynamoDB operations for certificate metadata lookup."""
 
+import logging
+
 import boto3
 from botocore.exceptions import ClientError
 
-from authorizer.types import CertMetadata
+from ._types import CertMetadata
+
+logger = logging.getLogger(__name__)
 
 _dynamodb_client = boto3.client("dynamodb")
 
@@ -16,6 +20,7 @@ def lookup_cert_metadata(serial_number: str, table_name: str) -> CertMetadata | 
             Key={"serialNumber": {"S": serial_number}},
         )
     except ClientError:
+        logger.exception("DynamoDB lookup failed for serial=%s table=%s", serial_number, table_name)
         return None
 
     item = response.get("Item")

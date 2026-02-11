@@ -55,6 +55,16 @@ AWS API Gateway requires a custom domain for mTLS - cannot enforce client certif
 
 - deploys resources in terraform environmental stack such as api gateway, lambdas, DynamoDB
 
+5. [ca-rotate-intermediate workflow](./.github/workflows/ca-rotate-intermediate.yml)
+
+- rotates intermediate CA by generating new intermediate cert signed by root CA from SSM
+- re-issues all active client certificates with the new rotated intermediate CA
+- re uploads secrets in SSM Parameter store, cert metadata in DynamoDB, and S3 truststore
+
+## Security
+
+Root CA keys stored in SSM Parameter Store (SecureString, KMS-encrypted). In production, root CA keys would be managed via AWS CloudHSM or AWS Private CA for FIPS 140-3 Level 3 hardware protection.
+
 ## Observability
 
 - OTEL instrumentation

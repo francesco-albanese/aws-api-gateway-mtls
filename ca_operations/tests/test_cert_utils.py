@@ -2,7 +2,10 @@
 
 from datetime import UTC, datetime, timedelta
 
+import pytest
 from cryptography import x509
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec
 from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
 
 from ca_operations.lib.cert_utils import (
@@ -347,3 +350,33 @@ class TestCSROperations:
         restored = deserialize_csr(pem)
 
         assert client_csr.subject == restored.subject
+
+
+class TestDeserializePrivateKeyEdgeCases:
+    """Tests for deserialize_private_key with non-RSA keys."""
+
+    def test_ec_key_raises_value_error(self) -> None:
+        """deserialize_private_key raises ValueError for EC private key."""
+        ec_key = ec.generate_private_key(ec.SECP256R1())
+        ec_pem = ec_key.private_bytes(
+            encoding=serialization.Encoding.PEM,
+            format=serialization.PrivateFormat.PKCS8,
+            encryption_algorithm=serialization.NoEncryption(),
+        )
+        with pytest.raises(ValueError, match="expected RSA private key"):
+            deserialize_private_key(ec_pem)
+
+
+class TestExtractCSRPublicKeyEdgeCases:
+    """Tests for extract_csr_public_key with non-RSA CSR."""
+
+    def test_ec_csr_raises_value_error(self) -> None:
+        """extract_csr_public_key raises ValueError for EC-based CSR."""
+        ec_key = ec.generate_private_key(ec.SECP256R1())
+        csr = (
+            x509.CertificateSigningRequestBuilder()
+            .subject_name(x509.Name([x509.NameAttribute(x509.NameOID.COMMON_NAME, "ec-test")]))
+            .sign(ec_key, hashes.SHA256())
+        )
+        with pytest.raises(ValueError, match="CSR public key must be RSA type"):
+            extract_csr_public_key(csr)

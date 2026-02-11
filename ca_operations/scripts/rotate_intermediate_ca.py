@@ -1,17 +1,21 @@
 #!/usr/bin/env python3
-"""Rotate Intermediate CA - re-issue active client certs and update truststore."""
+"""Rotate Intermediate CA - generate new intermediate, re-issue active client certs."""
 
 import argparse
 import json
 import sys
+from datetime import date
 from pathlib import Path
 
+from ca_operations.lib.ca_utils import create_intermediate_ca
 from ca_operations.lib.cert_utils import (
     create_truststore_bundle,
     deserialize_certificate,
     deserialize_private_key,
     extract_certificate_metadata,
     serialize_certificate,
+    serialize_csr,
+    serialize_private_key,
 )
 from ca_operations.lib.certificate_builder import CertificateBuilder
 from ca_operations.lib.config import CAConfig
@@ -27,8 +31,7 @@ PROJECT_NAME = "apigw-mtls"
 
 def rotate_intermediate_ca(
     environment: str,
-    new_intermediate_key_pem: bytes,
-    new_intermediate_cert_pem: bytes,
+    root_key_pem: bytes,
     root_cert_pem: bytes,
     dynamodb_table: str,
     s3_bucket: str,
@@ -41,17 +44,17 @@ def rotate_intermediate_ca(
 ) -> RotationResult:
     """Perform intermediate CA rotation.
 
-    1. Query active certs from DynamoDB
-    2. Fetch each client cert from SSM
-    3. Re-issue with new intermediate CA
-    4. Update DynamoDB: revoke old, add new
-    5. Update S3 truststore
+    1. Generate new intermediate CA signed by root
+    2. Store new intermediate in SSM
+    3. Query active certs from DynamoDB
+    4. Re-issue each client cert with new intermediate
+    5. Update DynamoDB: revoke old, add new
+    6. Update S3 truststore
 
     Args:
         environment: Target environment
-        new_intermediate_key_pem: New intermediate CA private key PEM
-        new_intermediate_cert_pem: New intermediate CA certificate PEM
-        root_cert_pem: Root CA certificate PEM (for truststore)
+        root_key_pem: Root CA private key PEM bytes
+        root_cert_pem: Root CA certificate PEM bytes
         dynamodb_table: DynamoDB table name
         s3_bucket: S3 bucket for truststore
         ssm_client: SSM client instance
@@ -64,8 +67,34 @@ def rotate_intermediate_ca(
     Returns:
         RotationResult with counts and details
     """
-    new_intermediate_key = deserialize_private_key(new_intermediate_key_pem)
-    new_intermediate_cert = deserialize_certificate(new_intermediate_cert_pem)
+    # Deserialize root CA
+    root_key = deserialize_private_key(root_key_pem)
+    root_cert = deserialize_certificate(root_cert_pem)
+
+    # Generate new intermediate CA
+    cn = f"Francesco Albanese Issuing CA - rotated {date.today().isoformat()}"
+    new_intermediate_key, new_intermediate_cert, new_csr = create_intermediate_ca(
+        root_cert=root_cert, root_key=root_key, config=config, common_name=cn
+    )
+
+    # Serialize new intermediate artifacts
+    new_key_pem = serialize_private_key(new_intermediate_key)
+    new_cert_pem = serialize_certificate(new_intermediate_cert)
+
+    # Store new intermediate CA in SSM
+    if not dry_run:
+        ssm_client.put_intermediate_ca(PROJECT_NAME, environment, new_key_pem, new_cert_pem)
+        LOGGER.info("Stored new intermediate CA in SSM")
+
+    # Write intermediate CA artifacts to output
+    intermediate_output_dir = output_dir / "intermediate-ca"
+    intermediate_output_dir.mkdir(parents=True, exist_ok=True)
+    (intermediate_output_dir / "IntermediateCA.key").write_bytes(new_key_pem)
+    (intermediate_output_dir / "IntermediateCA.pem").write_bytes(new_cert_pem)
+    (intermediate_output_dir / "IntermediateCA.csr").write_bytes(serialize_csr(new_csr))
+    (intermediate_output_dir / "metadata.json").write_text(
+        json.dumps(extract_certificate_metadata(new_intermediate_cert), indent=2)
+    )
 
     new_intermediate_metadata = extract_certificate_metadata(new_intermediate_cert)
     new_intermediate_serial = new_intermediate_metadata["serialNumber"]
@@ -105,21 +134,18 @@ def rotate_intermediate_ca(
                 validity_days=config.client_validity_days,
             )
 
-            new_cert_pem = serialize_certificate(new_cert)
+            new_cert_pem_client = serialize_certificate(new_cert)
             new_metadata = extract_certificate_metadata(new_cert, client_id=client_id)
             new_serial = new_metadata["serialNumber"]
 
             if not dry_run:
-                if not dynamodb_client.revoke_certificate(dynamodb_table, old_serial):
-                    raise RuntimeError(f"Failed to revoke old cert {old_serial}")
+                if not dynamodb_client.rotate_certificate(dynamodb_table, old_serial, new_metadata):
+                    raise RuntimeError(f"Failed to rotate cert {old_serial} -> {new_serial}")
                 revoked_count += 1
-
-                if not dynamodb_client.put_certificate_metadata(dynamodb_table, new_metadata):
-                    raise RuntimeError(f"Failed to insert new cert metadata {new_serial}")
 
                 ssm_client.client.put_parameter(
                     Name=cert_path,
-                    Value=new_cert_pem.decode("utf-8"),
+                    Value=new_cert_pem_client.decode("utf-8"),
                     Type="String",
                     Overwrite=True,
                 )
@@ -127,7 +153,7 @@ def rotate_intermediate_ca(
             # Write to output dir for audit
             client_output_dir = output_dir / client_id
             client_output_dir.mkdir(parents=True, exist_ok=True)
-            (client_output_dir / "client.pem").write_bytes(new_cert_pem)
+            (client_output_dir / "client.pem").write_bytes(new_cert_pem_client)
             (client_output_dir / "metadata.json").write_text(json.dumps(new_metadata, indent=2))
 
             reissued_serials.append(new_serial)
@@ -137,7 +163,7 @@ def rotate_intermediate_ca(
             LOGGER.error("Failed to re-issue %s: %s", client_id, str(e))
             failed_client_ids.append(client_id)
 
-    truststore_bundle = create_truststore_bundle(new_intermediate_cert_pem, root_cert_pem)
+    truststore_bundle = create_truststore_bundle(new_cert_pem, root_cert_pem)
     version_id = ""
 
     if failed_client_ids:
@@ -180,22 +206,9 @@ def main() -> int:
         help="Target environment",
     )
     parser.add_argument(
-        "--new-intermediate-key",
-        type=Path,
-        required=True,
-        help="Path to new intermediate CA private key PEM",
-    )
-    parser.add_argument(
-        "--new-intermediate-cert",
-        type=Path,
-        required=True,
-        help="Path to new intermediate CA certificate PEM",
-    )
-    parser.add_argument(
-        "--root-cert",
-        type=Path,
-        required=True,
-        help="Path to root CA certificate PEM",
+        "--project-name",
+        default=PROJECT_NAME,
+        help=f"Project name for SSM paths (default: {PROJECT_NAME})",
     )
     parser.add_argument(
         "--dynamodb-table",
@@ -222,20 +235,15 @@ def main() -> int:
     if not args.output_dir:
         args.output_dir = Path(f"ca_operations/output/{args.environment}/rotation")
 
-    for path_arg in [args.new_intermediate_key, args.new_intermediate_cert, args.root_cert]:
-        if not path_arg.exists():
-            LOGGER.error("File not found: %s", path_arg)
-            return 1
-
     try:
-        new_intermediate_key_pem = args.new_intermediate_key.read_bytes()
-        new_intermediate_cert_pem = args.new_intermediate_cert.read_bytes()
-        root_cert_pem = args.root_cert.read_bytes()
-
         ssm_client = SSMClient()
         dynamodb_client = DynamoDBClient()
         s3_client = S3Client()
         config = CAConfig()
+
+        # Fetch root CA from SSM
+        root_key_pem, root_cert_pem = ssm_client.get_root_ca(args.project_name, args.environment)
+        LOGGER.info("Fetched root CA from SSM for %s/%s", args.project_name, args.environment)
 
         args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -244,8 +252,7 @@ def main() -> int:
 
         result = rotate_intermediate_ca(
             environment=args.environment,
-            new_intermediate_key_pem=new_intermediate_key_pem,
-            new_intermediate_cert_pem=new_intermediate_cert_pem,
+            root_key_pem=root_key_pem,
             root_cert_pem=root_cert_pem,
             dynamodb_table=args.dynamodb_table,
             s3_bucket=args.s3_bucket,

@@ -1,6 +1,6 @@
 """Response builders for authorizer Lambda."""
 
-from authorizer.types import AuthorizerResponse
+from ._types import AuthorizerResponse
 
 
 def deny_response() -> AuthorizerResponse:

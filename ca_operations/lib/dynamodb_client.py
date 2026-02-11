@@ -84,6 +84,8 @@ class DynamoDBClient:
     def revoke_certificate(self, table_name: str, serial_number: str) -> bool:
         """Mark certificate as revoked in DynamoDB.
 
+        Only revokes if the item exists and is currently active.
+
         Args:
             table_name: DynamoDB table name
             serial_number: Certificate serial number (primary key)
@@ -97,12 +99,20 @@ class DynamoDBClient:
             table.update_item(
                 Key={"serialNumber": serial_number},
                 UpdateExpression="SET #s = :status",
+                ConditionExpression="attribute_exists(serialNumber) AND #s = :active",
                 ExpressionAttributeNames={"#s": "status"},
-                ExpressionAttributeValues={":status": "revoked"},
+                ExpressionAttributeValues={":status": "revoked", ":active": "active"},
             )
             return True
         except ClientError as e:
-            logger.error("Failed to revoke cert %s: %s", serial_number, e)
+            error_code = e.response.get("Error", {}).get("Code")
+            if error_code == "ConditionalCheckFailedException":
+                logger.warning(
+                    "Revoke condition failed for %s: item missing or not active",
+                    serial_number,
+                )
+            else:
+                logger.error("Failed to revoke cert %s: %s", serial_number, e)
             return False
 
     def put_certificate_metadata(self, table_name: str, metadata: CertificateMetadata) -> bool:
@@ -122,4 +132,60 @@ class DynamoDBClient:
             return True
         except ClientError as e:
             logger.error("Failed to put cert metadata %s: %s", metadata.get("serialNumber"), e)
+            return False
+
+    def rotate_certificate(
+        self,
+        table_name: str,
+        old_serial: str,
+        new_metadata: CertificateMetadata,
+    ) -> bool:
+        """Atomically revoke old cert and insert new cert metadata.
+
+        Uses DynamoDB transact_write_items to ensure both operations
+        succeed or both fail.
+
+        Args:
+            table_name: DynamoDB table name
+            old_serial: Serial number of certificate to revoke
+            new_metadata: New certificate metadata to insert
+
+        Returns:
+            True if transaction succeeded, False otherwise
+        """
+        try:
+            self.client.transact_write_items(
+                TransactItems=[
+                    {
+                        "Update": {
+                            "TableName": table_name,
+                            "Key": {"serialNumber": {"S": old_serial}},
+                            "UpdateExpression": "SET #s = :status",
+                            "ConditionExpression": "attribute_exists(serialNumber) AND #s = :active",
+                            "ExpressionAttributeNames": {"#s": "status"},
+                            "ExpressionAttributeValues": {
+                                ":status": {"S": "revoked"},
+                                ":active": {"S": "active"},
+                            },
+                        }
+                    },
+                    {
+                        "Put": {
+                            "TableName": table_name,
+                            "Item": {
+                                k: {"S": str(v)} if isinstance(v, str) else {"N": str(v)}
+                                for k, v in new_metadata.items()
+                            },
+                        }
+                    },
+                ]
+            )
+            return True
+        except ClientError as e:
+            logger.error(
+                "Transaction failed rotating %s -> %s: %s",
+                old_serial,
+                new_metadata.get("serialNumber"),
+                e,
+            )
             return False

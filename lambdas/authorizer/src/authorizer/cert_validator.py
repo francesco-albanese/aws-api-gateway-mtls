@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 
-from authorizer.types import CertMetadata
+from ._types import CertMetadata
 
 
 def validate_cert_status(metadata: CertMetadata) -> tuple[bool, str]:

@@ -2,7 +2,7 @@
 
 ## Overview
 
-Two-stack pattern separating one-time bootstrap from regular infrastructure.
+Multi-stack pattern: bootstrap → ECR → environmental → client provisioning.
 
 ## Stacks
 
@@ -60,3 +60,64 @@ make environmental-init ACCOUNT=sandbox
 make environmental-plan ACCOUNT=sandbox
 make environmental-apply ACCOUNT=sandbox
 ```
+
+---
+
+### ecr/
+
+**Purpose:** ECR repositories for Lambda container images (health + authorizer)
+
+**Resources:**
+
+- ECR repo: `{project}-health-lambda`
+- ECR repo: `{project}-authorizer-lambda`
+- Lifecycle policies: keep last 5 images
+- Scan on push enabled, `prevent_destroy` lifecycle
+
+**Deployment:**
+
+- Triggered via: `.github/workflows/ecr-deploy.yml` (manual workflow dispatch)
+- Frequency: Once per environment, MUST run before environmental stack
+- State key: `aws-api-gateway-mtls/ecr/{ACCOUNT}/terraform.tfstate`
+
+**Usage:**
+
+```bash
+make ecr-init ACCOUNT=sandbox
+make ecr-plan ACCOUNT=sandbox
+make ecr-apply ACCOUNT=sandbox
+```
+
+---
+
+### client-provisioning/
+
+**Purpose:** Store client cert metadata in DynamoDB + client keys/certs in SSM
+
+**Resources:**
+
+- DynamoDB table items: cert metadata (serialNumber, client_id, clientName, status, issuedAt, expiry, ttl)
+- SSM parameters per client:
+  - `/{project}/{env}/clients/{client_id}/private-key` (SecureString)
+  - `/{project}/{env}/clients/{client_id}/certificate` (String)
+
+**Deployment:**
+
+- Triggered via: `.github/workflows/client-provision.yml`
+- Frequency: When provisioning new clients or re-issuing certs
+- Dependencies: certificate-bootstrap + environmental must run first
+- State key: `aws-api-gateway-mtls/client-provisioning/{ACCOUNT}/terraform.tfstate`
+
+**Usage:**
+
+```bash
+make client-provisioning-init ACCOUNT=sandbox
+make client-provisioning-plan ACCOUNT=sandbox
+make client-provisioning-apply ACCOUNT=sandbox
+```
+
+---
+
+### Note: Intermediate CA Rotation
+
+Rotation updates SSM parameters, DynamoDB metadata, and S3 truststore directly via Python scripts — no Terraform step needed. Resources already exist from certificate-bootstrap + client-provisioning stacks.

@@ -3,11 +3,29 @@
 import json
 import os
 
-from authorizer.cert_extractor import extract_client_cn, extract_serial_number, extract_validity
-from authorizer.cert_metadata import lookup_cert_metadata
-from authorizer.cert_validator import validate_cert_status, validate_client_identity
-from authorizer.responses import allow_response, deny_response
-from authorizer.types import APIGatewayAuthorizerEventV2, AuthorizerResponse, LambdaContext
+try:
+    from _types import (  # type: ignore[reportMissingImports]
+        APIGatewayAuthorizerEventV2,
+        AuthorizerResponse,
+        LambdaContext,
+    )
+    from cert_extractor import (  # type: ignore[reportMissingImports]
+        extract_client_cn,
+        extract_serial_number,
+        extract_validity,
+    )
+    from cert_metadata import lookup_cert_metadata  # type: ignore[reportMissingImports]
+    from cert_validator import (  # type: ignore[reportMissingImports]
+        validate_cert_status,
+        validate_client_identity,
+    )
+    from responses import allow_response, deny_response  # type: ignore[reportMissingImports]
+except ImportError:
+    from ._types import APIGatewayAuthorizerEventV2, AuthorizerResponse, LambdaContext
+    from .cert_extractor import extract_client_cn, extract_serial_number, extract_validity
+    from .cert_metadata import lookup_cert_metadata
+    from .cert_validator import validate_cert_status, validate_client_identity
+    from .responses import allow_response, deny_response
 
 
 def _log(level: str, message: str, **kwargs) -> None:

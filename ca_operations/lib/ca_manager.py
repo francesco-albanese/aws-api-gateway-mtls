@@ -6,6 +6,7 @@ from pathlib import Path
 from cryptography import x509
 from cryptography.hazmat.primitives import hashes, serialization
 
+from .ca_utils import create_intermediate_ca
 from .cert_utils import (
     create_truststore_bundle,
     deserialize_certificate,
@@ -77,27 +78,10 @@ class CAManager:
         root_metadata = extract_certificate_metadata(root_cert)
         root_metadata_path.write_text(json.dumps(root_metadata, indent=2))
 
-        intermediate_key = generate_private_key(self.config.key_size)
-        intermediate_dn = DistinguishedName(
-            country=self.config.country,
-            state=self.config.state,
-            locality=self.config.locality,
-            organization=self.config.organization,
-            organizational_unit=self.config.organizational_unit,
-            common_name="Francesco Albanese Issuing CA",
-        )
-
-        csr = (
-            x509.CertificateSigningRequestBuilder()
-            .subject_name(intermediate_dn.to_x509_name())
-            .sign(intermediate_key, hashes.SHA256())
-        )
-
-        intermediate_cert = CertificateBuilder.build_intermediate_ca(
-            csr=csr,
+        intermediate_key, intermediate_cert, csr = create_intermediate_ca(
             root_cert=root_cert,
             root_key=root_key,
-            validity_years=self.config.intermediate_validity_years,
+            config=self.config,
         )
 
         intermediate_key_path = intermediate_dir / "IntermediateCA.key"

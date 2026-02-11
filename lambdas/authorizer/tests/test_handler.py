@@ -1,14 +1,16 @@
 """Tests for authorizer Lambda handler."""
 
+import json
 from unittest.mock import patch
 
 import pytest
 
+from src.authorizer._types import APIGatewayAuthorizerEventV2, CertMetadata, LambdaContext
 from src.authorizer.cert_extractor import extract_client_cn, extract_serial_number, extract_validity
+from src.authorizer.cert_metadata import lookup_cert_metadata
 from src.authorizer.cert_validator import validate_cert_status, validate_client_identity
 from src.authorizer.handler import handler
 from src.authorizer.responses import allow_response, deny_response
-from src.authorizer.types import APIGatewayAuthorizerEventV2, CertMetadata, LambdaContext
 
 
 class TestCertExtraction:
@@ -268,3 +270,163 @@ class TestHandler:
         assert ctx["clientId"] == "test-client"
         assert ctx["validityNotBefore"] == "2025-01-01T00:00:00Z"
         assert ctx["validityNotAfter"] == "2027-01-01T00:00:00Z"
+
+
+class TestMalformedDynamoDBItems:
+    """Tests for lookup_cert_metadata with malformed DynamoDB items."""
+
+    def test_missing_client_name_key(self) -> None:
+        """Item missing required 'clientName' key returns None (KeyError path)."""
+        with patch("src.authorizer.cert_metadata._dynamodb_client") as mock_client:
+            mock_client.get_item.return_value = {
+                "Item": {
+                    "serialNumber": {"S": "ABC123"},
+                    "client_id": {"S": "test-client"},
+                    "status": {"S": "active"},
+                    "issuedAt": {"S": "2025-01-01T00:00:00Z"},
+                    "expiry": {"S": "2027-01-01T00:00:00Z"},
+                    # clientName intentionally missing
+                }
+            }
+            result = lookup_cert_metadata("ABC123", "test-table")
+        assert result is None
+
+    def test_wrong_type_structure(self) -> None:
+        """Item with wrong type structure returns None (TypeError path)."""
+        with patch("src.authorizer.cert_metadata._dynamodb_client") as mock_client:
+            mock_client.get_item.return_value = {
+                "Item": {
+                    "serialNumber": "not-a-dict",  # should be {"S": "..."}
+                    "client_id": {"S": "test-client"},
+                    "clientName": {"S": "Test Client"},
+                    "status": {"S": "active"},
+                    "issuedAt": {"S": "2025-01-01T00:00:00Z"},
+                    "expiry": {"S": "2027-01-01T00:00:00Z"},
+                }
+            }
+            result = lookup_cert_metadata("ABC123", "test-table")
+        assert result is None
+
+    def test_missing_client_id_falls_back_to_empty(self) -> None:
+        """Item without client_id falls back to empty string via .get()."""
+        with patch("src.authorizer.cert_metadata._dynamodb_client") as mock_client:
+            mock_client.get_item.return_value = {
+                "Item": {
+                    "serialNumber": {"S": "ABC123"},
+                    "clientName": {"S": "Test Client"},
+                    "status": {"S": "active"},
+                    "issuedAt": {"S": "2025-01-01T00:00:00Z"},
+                    "expiry": {"S": "2027-01-01T00:00:00Z"},
+                    # client_id intentionally missing
+                }
+            }
+            result = lookup_cert_metadata("ABC123", "test-table")
+        assert result is not None
+        assert result["client_id"] == ""
+
+
+class TestMissingCNInSubjectDN:
+    """Tests for extract_client_cn with missing/empty CN in subjectDN."""
+
+    def test_subject_dn_without_cn_field(
+        self, event_with_mtls_cert: APIGatewayAuthorizerEventV2
+    ) -> None:
+        """subjectDN with no CN= field returns None."""
+        event_with_mtls_cert["requestContext"]["authentication"]["clientCert"]["subjectDN"] = (  # type: ignore[reportTypedDictNotRequiredAccess]
+            "O=Org,C=US"
+        )
+        result = extract_client_cn(event_with_mtls_cert)
+        assert result is None
+
+    def test_subject_dn_with_empty_cn_value(
+        self, event_with_mtls_cert: APIGatewayAuthorizerEventV2
+    ) -> None:
+        """subjectDN with 'CN=,O=Org' returns empty string."""
+        event_with_mtls_cert["requestContext"]["authentication"]["clientCert"]["subjectDN"] = (  # type: ignore[reportTypedDictNotRequiredAccess]
+            "CN=,O=Org"
+        )
+        result = extract_client_cn(event_with_mtls_cert)
+        assert result == ""
+
+
+class TestCertValidatorUnknownStatuses:
+    """Tests for validate_cert_status with unusual status values."""
+
+    def test_suspended_status_is_invalid(self, active_cert_metadata: CertMetadata) -> None:
+        active_cert_metadata["status"] = "suspended"
+        is_valid, reason = validate_cert_status(active_cert_metadata)
+        assert is_valid is False
+        assert "suspended" in reason
+
+    def test_empty_status_is_invalid(self, active_cert_metadata: CertMetadata) -> None:
+        active_cert_metadata["status"] = ""
+        is_valid, reason = validate_cert_status(active_cert_metadata)
+        assert is_valid is False
+
+    def test_pending_status_is_invalid(self, active_cert_metadata: CertMetadata) -> None:
+        active_cert_metadata["status"] = "pending"
+        is_valid, reason = validate_cert_status(active_cert_metadata)
+        assert is_valid is False
+        assert "pending" in reason
+
+
+class TestStructuredLogOutput:
+    """Tests that handler produces expected structured JSON logs."""
+
+    def test_log_on_missing_table_name(
+        self,
+        event_with_mtls_cert: APIGatewayAuthorizerEventV2,
+        lambda_context: LambdaContext,
+        monkeypatch: pytest.MonkeyPatch,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        monkeypatch.delenv("DYNAMODB_TABLE_NAME", raising=False)
+        handler(event_with_mtls_cert, lambda_context)
+        captured = capsys.readouterr()
+        log = json.loads(captured.out.strip())
+        assert log["level"] == "error"
+        assert "DYNAMODB_TABLE_NAME" in log["message"]
+
+    def test_log_on_missing_serial_number(
+        self,
+        base_event: APIGatewayAuthorizerEventV2,
+        lambda_context: LambdaContext,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        handler(base_event, lambda_context)
+        captured = capsys.readouterr()
+        log = json.loads(captured.out.strip())
+        assert log["level"] == "warn"
+        assert "serial" in log["message"].lower()
+
+    def test_log_on_authorization_granted(
+        self,
+        event_with_mtls_cert: APIGatewayAuthorizerEventV2,
+        lambda_context: LambdaContext,
+        active_cert_metadata: CertMetadata,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        with patch(
+            "src.authorizer.handler.lookup_cert_metadata", return_value=active_cert_metadata
+        ):
+            handler(event_with_mtls_cert, lambda_context)
+        captured = capsys.readouterr()
+        log = json.loads(captured.out.strip())
+        assert log["level"] == "info"
+        assert "granted" in log["message"].lower()
+        assert log["serialNumber"] == "ABC123DEF456"
+        assert log["clientCN"] == "test-client"
+
+    def test_log_on_cert_not_found(
+        self,
+        event_with_mtls_cert: APIGatewayAuthorizerEventV2,
+        lambda_context: LambdaContext,
+        capsys: pytest.CaptureFixture[str],
+    ) -> None:
+        with patch("src.authorizer.handler.lookup_cert_metadata", return_value=None):
+            handler(event_with_mtls_cert, lambda_context)
+        captured = capsys.readouterr()
+        log = json.loads(captured.out.strip())
+        assert log["level"] == "warn"
+        assert "not found" in log["message"].lower()
+        assert log["serialNumber"] == "ABC123DEF456"

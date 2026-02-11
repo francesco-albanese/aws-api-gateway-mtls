@@ -11,6 +11,19 @@
 - Intermediate CA issues certificate
 - Client private key, public cert and certificate metadata are stored in AWS via Terraform
 
+## GitHub Workflow Provisioning
+
+The [`client-provision.yml`](../.github/workflows/client-provision.yml) workflow automates provisioning:
+
+1. Reads config per environment (e.g., [`clients/sandbox.json`](./sandbox.json)) containing client IDs
+2. For each client: generates key pair, creates CSR and generates public pem certificate signed by Intermediate CA fetched from SSM
+3. Stores private key and cert in SSM, uploads metadata in DynamoDB via Terraform (`client-provisioning` stack)
+
+**Triggers on:**
+
+- Manual workflow dispatch (select environment)
+- Automatically on PR merge to `main` when `clients/*.json` changes
+
 ## Manual test
 
 Manual testing of health endpoint with mTLS certificates.

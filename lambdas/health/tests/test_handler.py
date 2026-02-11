@@ -170,3 +170,130 @@ class TestResponseStructure:
         assert "clientCN" in mtls
         assert "serialNumber" in mtls
         assert "validity" in mtls
+
+
+class TestPartialAuthorizerContext:
+    """Tests with partial authorizer context fields."""
+
+    def test_serial_number_only(self, mock_context: LambdaContext) -> None:
+        """Event with serialNumber but no clientCN."""
+        event: APIGatewayProxyEventV2 = {
+            "requestContext": {
+                "authorizer": {
+                    "lambda": {
+                        "serialNumber": "1234567890ABCDEF",
+                    }
+                }
+            }
+        }
+        response = handler(event, mock_context)
+        body = parse_response_body(response)
+        assert body["mtls"]["enabled"] is True
+        assert body["mtls"]["serialNumber"] == "1234567890ABCDEF"
+        assert body["mtls"]["clientCN"] is None
+
+    def test_client_cn_only(self, mock_context: LambdaContext) -> None:
+        """Event with clientCN but no serialNumber."""
+        event: APIGatewayProxyEventV2 = {
+            "requestContext": {
+                "authorizer": {
+                    "lambda": {
+                        "clientCN": "test-client",
+                    }
+                }
+            }
+        }
+        response = handler(event, mock_context)
+        body = parse_response_body(response)
+        assert body["mtls"]["enabled"] is False
+        assert body["mtls"]["clientCN"] == "test-client"
+        assert body["mtls"]["serialNumber"] is None
+
+    def test_validity_only(self, mock_context: LambdaContext) -> None:
+        """Event with only validity fields."""
+        event: APIGatewayProxyEventV2 = {
+            "requestContext": {
+                "authorizer": {
+                    "lambda": {
+                        "validityNotBefore": "2025-01-01T00:00:00Z",
+                        "validityNotAfter": "2027-01-01T00:00:00Z",
+                    }
+                }
+            }
+        }
+        response = handler(event, mock_context)
+        body = parse_response_body(response)
+        assert body["mtls"]["enabled"] is False
+        assert body["mtls"]["validity"]["notBefore"] == "2025-01-01T00:00:00Z"
+        assert body["mtls"]["validity"]["notAfter"] == "2027-01-01T00:00:00Z"
+
+
+class TestCompactJSON:
+    """Verify body is compact JSON (no pretty printing)."""
+
+    def test_body_is_compact_json(
+        self,
+        event_with_authorizer_context: APIGatewayProxyEventV2,
+        mock_context: LambdaContext,
+    ) -> None:
+        response = handler(event_with_authorizer_context, mock_context)
+        body_str = response.get("body", "")
+        assert "\n" not in body_str
+        assert "  " not in body_str
+
+    def test_body_is_compact_json_no_context(
+        self,
+        event_without_authorizer_context: APIGatewayProxyEventV2,
+        mock_context: LambdaContext,
+    ) -> None:
+        response = handler(event_without_authorizer_context, mock_context)
+        body_str = response.get("body", "")
+        assert "\n" not in body_str
+        assert "  " not in body_str
+
+
+class TestResponseBodyStructure:
+    """Verify all expected keys are present across scenarios."""
+
+    EXPECTED_TOP_KEYS = {"status", "mtls"}
+    EXPECTED_MTLS_KEYS = {"enabled", "clientCN", "serialNumber", "validity"}
+
+    def test_all_keys_with_full_context(
+        self,
+        event_with_authorizer_context: APIGatewayProxyEventV2,
+        mock_context: LambdaContext,
+    ) -> None:
+        response = handler(event_with_authorizer_context, mock_context)
+        body = parse_response_body(response)
+        assert set(body.keys()) == self.EXPECTED_TOP_KEYS
+        assert set(body["mtls"].keys()) == self.EXPECTED_MTLS_KEYS
+
+    def test_all_keys_without_context(
+        self,
+        event_without_authorizer_context: APIGatewayProxyEventV2,
+        mock_context: LambdaContext,
+    ) -> None:
+        response = handler(event_without_authorizer_context, mock_context)
+        body = parse_response_body(response)
+        assert set(body.keys()) == self.EXPECTED_TOP_KEYS
+        assert set(body["mtls"].keys()) == self.EXPECTED_MTLS_KEYS
+
+    def test_all_keys_empty_request_context(
+        self,
+        event_empty_request_context: APIGatewayProxyEventV2,
+        mock_context: LambdaContext,
+    ) -> None:
+        response = handler(event_empty_request_context, mock_context)
+        body = parse_response_body(response)
+        assert set(body.keys()) == self.EXPECTED_TOP_KEYS
+        assert set(body["mtls"].keys()) == self.EXPECTED_MTLS_KEYS
+
+    def test_all_keys_no_request_context(
+        self,
+        event_no_request_context: APIGatewayProxyEventV2,
+        mock_context: LambdaContext,
+    ) -> None:
+        response = handler(event_no_request_context, mock_context)
+        body = parse_response_body(response)
+        assert set(body.keys()) == self.EXPECTED_TOP_KEYS
+        assert set(body["mtls"].keys()) == self.EXPECTED_MTLS_KEYS

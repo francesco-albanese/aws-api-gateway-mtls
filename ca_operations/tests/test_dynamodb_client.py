@@ -125,7 +125,7 @@ class TestDynamoDBClient:
         assert "client_id" not in result[0]
 
     def test_revoke_certificate_success(self, mock_boto3: MagicMock) -> None:
-        """Should update certificate status to revoked."""
+        """Should update certificate status to revoked with condition."""
         mock_table = MagicMock()
         mock_boto3.resource.return_value.Table.return_value = mock_table
 
@@ -134,6 +134,23 @@ class TestDynamoDBClient:
 
         assert result is True
         mock_table.update_item.assert_called_once()
+        call_kwargs = mock_table.update_item.call_args[1]
+        assert "ConditionExpression" in call_kwargs
+        assert ":active" in call_kwargs["ExpressionAttributeValues"]
+
+    def test_revoke_certificate_condition_check_failed(self, mock_boto3: MagicMock) -> None:
+        """Should return False when item missing or not active."""
+        mock_table = MagicMock()
+        mock_table.update_item.side_effect = ClientError(
+            {"Error": {"Code": "ConditionalCheckFailedException", "Message": "condition not met"}},
+            "UpdateItem",
+        )
+        mock_boto3.resource.return_value.Table.return_value = mock_table
+
+        client = DynamoDBClient()
+        result = client.revoke_certificate("test-table", "AB:CD:EF")
+
+        assert result is False
 
     def test_put_certificate_metadata_success(self, mock_boto3: MagicMock) -> None:
         """Should insert metadata into DynamoDB."""
@@ -189,5 +206,60 @@ class TestDynamoDBClient:
             ttl=1735689600,
         )
         result = client.put_certificate_metadata("test-table", metadata)
+
+        assert result is False
+
+    def test_rotate_certificate_success(self, mock_boto3: MagicMock) -> None:
+        """Should atomically revoke old and insert new cert."""
+        mock_client = MagicMock()
+        mock_boto3.client.return_value = mock_client
+
+        client = DynamoDBClient()
+        new_metadata = CertificateMetadata(
+            serialNumber="NEW:SERIAL",
+            client_id="client-001",
+            clientName="client-001",
+            status="active",
+            issuedAt="2025-01-01T00:00:00+00:00",
+            expiry="2026-01-01T00:00:00+00:00",
+            notBefore="2025-01-01T00:00:00+00:00",
+            ttl=1735689600,
+        )
+        result = client.rotate_certificate("test-table", "OLD:SERIAL", new_metadata)
+
+        assert result is True
+        mock_client.transact_write_items.assert_called_once()
+        call_kwargs = mock_client.transact_write_items.call_args[1]
+        items = call_kwargs["TransactItems"]
+        assert len(items) == 2
+        assert "Update" in items[0]
+        assert "Put" in items[1]
+
+    def test_rotate_certificate_transaction_failure(self, mock_boto3: MagicMock) -> None:
+        """Should return False when transaction fails."""
+        mock_client = MagicMock()
+        mock_client.transact_write_items.side_effect = ClientError(
+            {
+                "Error": {
+                    "Code": "TransactionCanceledException",
+                    "Message": "condition check failed",
+                }
+            },
+            "TransactWriteItems",
+        )
+        mock_boto3.client.return_value = mock_client
+
+        client = DynamoDBClient()
+        new_metadata = CertificateMetadata(
+            serialNumber="NEW:SERIAL",
+            client_id="client-001",
+            clientName="client-001",
+            status="active",
+            issuedAt="2025-01-01T00:00:00+00:00",
+            expiry="2026-01-01T00:00:00+00:00",
+            notBefore="2025-01-01T00:00:00+00:00",
+            ttl=1735689600,
+        )
+        result = client.rotate_certificate("test-table", "OLD:SERIAL", new_metadata)
 
         assert result is False

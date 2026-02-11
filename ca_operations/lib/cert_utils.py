@@ -21,6 +21,7 @@ def generate_private_key(key_size: int = 4096) -> RSAPrivateKey:
 
 def serialize_private_key(key: RSAPrivateKey) -> bytes:
     """Serialize private key to PEM format (PKCS8, no encryption)."""
+    # NoEncryption: files are loaded from SSM Parameter Store
     return key.private_bytes(
         encoding=serialization.Encoding.PEM,
         format=serialization.PrivateFormat.PKCS8,
