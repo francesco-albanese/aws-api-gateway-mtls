@@ -29,7 +29,7 @@ def _parse_item_to_metadata(
         issuedAt=str(item["issuedAt"]),
         expiry=str(item["expiry"]),
         notBefore=str(item["notBefore"]),
-        ttl=int(cast(int, raw_ttl)),
+        ttl=int(item['ttl']),
     )
     client_id = item.get("client_id")
     if client_id is not None:
