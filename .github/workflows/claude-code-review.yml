@@ -40,7 +40,9 @@ jobs:
             REPO: ${{ github.repository }}
             PR NUMBER: ${{ github.event.pull_request.number }}
 
-            Review this PR. Be extremely concise — terse bullet points only.
+            Review this PR but don't do a recap of the changes done, there's already
+            the diff for that. Focus on the code changes.
+            Be extremely concise — terse bullet points only.
 
             Rules:
             - Only flag real bugs, security issues, or performance problems
