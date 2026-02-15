@@ -72,7 +72,6 @@ class TestDynamoDBClient:
                         "status": "active",
                         "issuedAt": "",
                         "expiry": "",
-                        "notBefore": "",
                         "ttl": 0,
                     }
                 ],
@@ -86,7 +85,6 @@ class TestDynamoDBClient:
                         "status": "active",
                         "issuedAt": "",
                         "expiry": "",
-                        "notBefore": "",
                         "ttl": 0,
                     }
                 ],

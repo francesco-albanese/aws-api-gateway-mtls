@@ -28,9 +28,11 @@ def _parse_item_to_metadata(
         status=str(item["status"]),
         issuedAt=str(item["issuedAt"]),
         expiry=str(item["expiry"]),
-        notBefore=str(item.get("notBefore", "")),
         ttl=int(cast(int, raw_ttl)),
     )
+    not_before = item.get("notBefore")
+    if not_before is not None:
+        metadata["notBefore"] = str(not_before)
     client_id = item.get("client_id")
     if client_id is not None:
         metadata["client_id"] = str(client_id)
