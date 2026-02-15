@@ -43,7 +43,6 @@ class TestDynamoDBClient:
                     "status": "active",
                     "issuedAt": "2025-01-01T00:00:00+00:00",
                     "expiry": "2026-01-01T00:00:00+00:00",
-                    "notBefore": "2025-01-01T00:00:00+00:00",
                     "ttl": 1735689600,
                 }
             ]
@@ -98,30 +97,6 @@ class TestDynamoDBClient:
         assert len(result) == 2
         assert mock_table.query.call_count == 2
 
-    def test_get_active_certificates_legacy_without_notbefore(self, mock_boto3: MagicMock) -> None:
-        """Should parse legacy items missing notBefore and exclude it from result."""
-        mock_table = MagicMock()
-        mock_table.query.return_value = {
-            "Items": [
-                {
-                    "serialNumber": "AA:BB",
-                    "clientName": "legacy-client",
-                    "status": "active",
-                    "issuedAt": "2024-01-01T00:00:00+00:00",
-                    "expiry": "2025-01-01T00:00:00+00:00",
-                    "ttl": 1735689600,
-                }
-            ]
-        }
-        mock_boto3.resource.return_value.Table.return_value = mock_table
-
-        client = DynamoDBClient()
-        result = client.get_active_certificates("test-table")
-
-        assert len(result) == 1
-        assert result[0]["serialNumber"] == "AA:BB"
-        assert "notBefore" not in result[0]
-
     def test_get_active_certificates_without_client_id(self, mock_boto3: MagicMock) -> None:
         """Should handle items without client_id (CA certs)."""
         mock_table = MagicMock()
@@ -133,7 +108,6 @@ class TestDynamoDBClient:
                     "status": "active",
                     "issuedAt": "2025-01-01T00:00:00+00:00",
                     "expiry": "2026-01-01T00:00:00+00:00",
-                    "notBefore": "2025-01-01T00:00:00+00:00",
                     "ttl": 1735689600,
                 }
             ]
@@ -187,7 +161,6 @@ class TestDynamoDBClient:
             status="active",
             issuedAt="2025-01-01T00:00:00+00:00",
             expiry="2026-01-01T00:00:00+00:00",
-            notBefore="2025-01-01T00:00:00+00:00",
             ttl=1735689600,
         )
         result = client.put_certificate_metadata("test-table", metadata)
@@ -224,7 +197,6 @@ class TestDynamoDBClient:
             status="active",
             issuedAt="2025-01-01T00:00:00+00:00",
             expiry="2026-01-01T00:00:00+00:00",
-            notBefore="2025-01-01T00:00:00+00:00",
             ttl=1735689600,
         )
         result = client.put_certificate_metadata("test-table", metadata)
@@ -244,7 +216,6 @@ class TestDynamoDBClient:
             status="active",
             issuedAt="2025-01-01T00:00:00+00:00",
             expiry="2026-01-01T00:00:00+00:00",
-            notBefore="2025-01-01T00:00:00+00:00",
             ttl=1735689600,
         )
         result = client.rotate_certificate("test-table", "OLD:SERIAL", new_metadata)
@@ -256,27 +227,6 @@ class TestDynamoDBClient:
         assert len(items) == 2
         assert "Update" in items[0]
         assert "Put" in items[1]
-
-    def test_rotate_certificate_without_notbefore(self, mock_boto3: MagicMock) -> None:
-        """Should handle new_metadata missing notBefore in rotation."""
-        mock_client = MagicMock()
-        mock_boto3.client.return_value = mock_client
-
-        client = DynamoDBClient()
-        new_metadata = CertificateMetadata(
-            serialNumber="NEW:SERIAL",
-            clientName="legacy-client",
-            status="active",
-            issuedAt="2025-01-01T00:00:00+00:00",
-            expiry="2026-01-01T00:00:00+00:00",
-            ttl=1735689600,
-        )
-        result = client.rotate_certificate("test-table", "OLD:SERIAL", new_metadata)
-
-        assert result is True
-        call_kwargs = mock_client.transact_write_items.call_args[1]
-        put_item = call_kwargs["TransactItems"][1]["Put"]["Item"]
-        assert "notBefore" not in put_item
 
     def test_rotate_certificate_transaction_failure(self, mock_boto3: MagicMock) -> None:
         """Should return False when transaction fails."""
@@ -300,7 +250,6 @@ class TestDynamoDBClient:
             status="active",
             issuedAt="2025-01-01T00:00:00+00:00",
             expiry="2026-01-01T00:00:00+00:00",
-            notBefore="2025-01-01T00:00:00+00:00",
             ttl=1735689600,
         )
         result = client.rotate_certificate("test-table", "OLD:SERIAL", new_metadata)

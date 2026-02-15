@@ -14,7 +14,6 @@ class CertificateMetadata(TypedDict):
     status: str
     issuedAt: str
     expiry: str
-    notBefore: NotRequired[str]
     ttl: int
 
 

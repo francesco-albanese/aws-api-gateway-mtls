@@ -92,7 +92,6 @@ def extract_certificate_metadata(
     if not isinstance(cn, str):
         raise ValueError("CN must be string")
 
-    not_before = cert.not_valid_before_utc
     not_after = cert.not_valid_after_utc
     issued_at = datetime.now(UTC)
     ttl_datetime = not_after + timedelta(days=90)
@@ -100,7 +99,6 @@ def extract_certificate_metadata(
     metadata = CertificateMetadata(
         serialNumber=get_certificate_serial_hex(cert),
         clientName=cn,
-        notBefore=not_before.isoformat(),
         expiry=not_after.isoformat(),
         status="active",
         issuedAt=issued_at.isoformat(),
