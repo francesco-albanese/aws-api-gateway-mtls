@@ -1,0 +1,21 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(git config:*)",
+      "Bash(git push:*)",
+      "Bash(cat:*)",
+      "Bash(find:*)",
+      "Skill(ralph-bootstrap)",
+      "Bash(uv sync:*)",
+      "Bash(prek run)",
+      "WebSearch",
+      "Bash(uv run pytest:*)",
+      "Bash(prek run:*)"
+    ]
+  },
+  "outputStyle": "default",
+  "sandbox": {
+    "enabled": true,
+    "autoAllowBashIfSandboxed": false
+  }
+}

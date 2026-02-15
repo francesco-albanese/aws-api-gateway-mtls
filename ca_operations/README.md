@@ -2,41 +2,39 @@
 
 Certificate authority operations using CSR-based PKI flow. Generates local artifacts for AWS provisioning.
 
-## Architecture
+## Business Logic
 
-**Scripts-only**: Pure cryptographic operations, Writes files to filesystem and Terraform provisions AWS resources storing certificates in Parameter Store, certificate chain in S3 truststore and certs metadata in DynamoDB.
+The script writes artifacts to `ca-operations/output` folder and Terraform provisions AWS resources storing certificates in Parameter Store, certificate chain in S3 truststore and certs metadata in DynamoDB.
 
 **CSR-based PKI flow**:
 
 - Requester creates private + public key pair
 - Requester creates CSR with identity and public key encoded, signs the CSR with private key
 - CA validates CSR signature (proves private key possession)
-- CA extracts subject DN and public key FROM CSR
+- CA extracts subject DN (distinguished name) and public key FROM CSR
 - CA issues certificate without ever seeing requester's private key
 
 ## Certificate Hierarchy
 
 3-tier PKI:
 
-- Root CA (self-signed, 10yr, RSA 4096)
-- Intermediate CA (signed by Root via CSR, 5yr, RSA 4096, pathlen:0)
-- Client certs (signed by Intermediate via CSR, 395 days, RSA 4096)
+- Root CA is self-signed, it's valid for 10yr, uses asymmetric encryption algotithm RSA 4096
+- Intermediate CA is signed by Root CA via CSR flow, it's valid for 5yr, uses RSA 4096 and limits certificate chain depth to `pathlen: 0`.
+- Client certs are signed by Intermediate CA via CSR, are valid for 395 days, and use RSA 4096
 
 ## Usage
 
-### Bootstrap CA (One-Time)
+How to run the script:
 
 ```bash
-# Generate Root CA and Intermediate CA
 uv run ca_operations/scripts/bootstrap_ca.py --output-dir ca_operations/output
 
-# Create truststore bundle (Intermediate + Root)
 uv run ca_operations/scripts/create_truststore.py \
   --ca-dir ca_operations/output \
   --output ca_operations/output/truststore/truststore.pem
 ```
 
-### Provision Client Certificates (Repeatable)
+### Provision Client Certificates
 
 ```bash
 uv run ca_operations/scripts/provision_client.py \
@@ -85,10 +83,10 @@ Formatted as hex with colons for readability and OpenSSL compatibility.
 }
 ```
 
-## Library Modules
+## Modules and utils
 
 - `lib/config.py`: CAConfig, DistinguishedName dataclasses
-- `lib/cert_utils.py`: Key generation, CSR validation/extraction, serialization, metadata
+- `lib/cert_utils.py`: Key generation, CSR validation/extraction, serialization, metadata generation
 - `lib/certificate_builder.py`: CSR-based certificate building (build_root_ca, build_intermediate_ca, build_client_certificate)
 - `lib/ca_manager.py`: CAManager orchestration (bootstrap_ca, create_truststore, provision_client_certificate)
 - `lib/models.py`: BootstrapResult, ClientCertResult dataclasses

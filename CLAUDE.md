@@ -1,6 +1,6 @@
 # Project Overview
 
-AWS API Gateway HTTP regional endpoint with mTLS enforcement. Uses certificate chain mechanism (Root CA → Intermediate CA → Client certs) with S3 truststore, custom domains, ACM certs, Cognito client_credentials flow, and DynamoDB for certificate metadata validation.
+AWS API Gateway HTTP regional endpoint with mTLS enforcement. Uses certificate chain mechanism (Root CA → Intermediate CA → Client certs) with S3 truststore, custom domains, ACM certs, and DynamoDB for certificate metadata validation.
 
 ## Package manager
 
@@ -12,6 +12,10 @@ AWS API Gateway HTTP regional endpoint with mTLS enforcement. Uses certificate c
 - terraform deployment via Github actions and workflows
 - [Github Actions and workflows](.github/)
 - [Instructions on what operations to run on CI and what order](.github/README.md)
+
+## Git Hooks
+
+- Never run `pre-commit`. Use `prek` instead (`prek run --all-files`) and run it before commit
 
 ## Rules
 

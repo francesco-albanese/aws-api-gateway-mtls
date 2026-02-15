@@ -1,5 +1,3 @@
-"""CA configuration dataclasses."""
-
 from dataclasses import dataclass
 
 from cryptography import x509
@@ -8,8 +6,6 @@ from cryptography.x509 import oid
 
 @dataclass
 class CAConfig:
-    """CA configuration with no AWS dependencies."""
-
     country: str = "GB"
     state: str = "London"
     locality: str = "London"

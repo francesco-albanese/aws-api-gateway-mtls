@@ -1,4 +1,5 @@
 ARG LAMBDA_NAME
+ARG ADOT_VERSION=v0.14.1
 FROM ghcr.io/astral-sh/uv:0.5 AS uv
 
 FROM public.ecr.aws/lambda/python:3.13-arm64 AS builder
@@ -15,8 +16,19 @@ RUN uv sync --frozen --no-dev --no-editable
 
 COPY ${LAMBDA_NAME}/src/ ./src/
 
+FROM public.ecr.aws/lambda/python:3.13-arm64 AS adot-layer
+ARG ADOT_VERSION
+RUN dnf install -y unzip && \
+    curl -L -o /tmp/layer.zip \
+    "https://github.com/aws-observability/aws-otel-python-instrumentation/releases/download/${ADOT_VERSION}/layer.zip" && \
+    mkdir -p /opt && \
+    unzip /tmp/layer.zip -d /opt/ && \
+    chmod -R 755 /opt/ && \
+    rm /tmp/layer.zip
+
 FROM public.ecr.aws/lambda/python:3.13-arm64
 ARG LAMBDA_NAME
+COPY --from=adot-layer /opt /opt
 COPY --from=builder /app/.venv/lib/python3.13/site-packages ${LAMBDA_TASK_ROOT}
 COPY --from=builder /app/src/${LAMBDA_NAME} ${LAMBDA_TASK_ROOT}
 

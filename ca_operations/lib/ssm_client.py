@@ -1,11 +1,11 @@
-"""SSM client for reading CA certificates from AWS Parameter Store."""
+"""SSM client for CA certificate operations via AWS Parameter Store."""
 
 import boto3
 from botocore.exceptions import ClientError
 
 
 class SSMClient:
-    """SSM client for reading CA certificates (writes handled by Terraform)."""
+    """SSM client for CA certificate read/write operations."""
 
     def __init__(self, region: str = "eu-west-2") -> None:
         """Initialize SSM client.
@@ -44,9 +44,69 @@ class SSMClient:
             error_code = e.response.get("Error", {}).get("Code", "")
             if error_code == "ParameterNotFound":
                 raise ValueError(
-                    f"Intermediate CA not found in SSM. " f"Paths checked: {key_path}, {cert_path}"
+                    f"Intermediate CA not found in SSM. Paths checked: {key_path}, {cert_path}"
                 ) from e
             raise
+
+    def get_root_ca(self, project_name: str, account: str) -> tuple[bytes, bytes]:
+        """Fetch root CA key and certificate from SSM.
+
+        Args:
+            project_name: Project name prefix (e.g., 'apigw-mtls')
+            account: Account/environment name (e.g., 'sandbox')
+
+        Returns:
+            Tuple of (private_key_pem, certificate_pem) as bytes
+
+        Raises:
+            ValueError: If parameters not found in SSM
+        """
+        key_path = f"/{project_name}/{account}/ca/root/private-key"
+        cert_path = f"/{project_name}/{account}/ca/root/certificate"
+
+        try:
+            key_response = self.client.get_parameter(Name=key_path, WithDecryption=True)
+            cert_response = self.client.get_parameter(Name=cert_path, WithDecryption=False)
+
+            key_pem = key_response["Parameter"]["Value"].encode("utf-8")
+            cert_pem = cert_response["Parameter"]["Value"].encode("utf-8")
+
+            return key_pem, cert_pem
+
+        except ClientError as e:
+            error_code = e.response.get("Error", {}).get("Code", "")
+            if error_code == "ParameterNotFound":
+                raise ValueError(
+                    f"Root CA not found in SSM. Paths checked: {key_path}, {cert_path}"
+                ) from e
+            raise
+
+    def put_intermediate_ca(
+        self, project_name: str, account: str, key_pem: bytes, cert_pem: bytes
+    ) -> None:
+        """Write intermediate CA key and certificate to SSM.
+
+        Args:
+            project_name: Project name prefix (e.g., 'apigw-mtls')
+            account: Account/environment name (e.g., 'sandbox')
+            key_pem: Intermediate CA private key in PEM format
+            cert_pem: Intermediate CA certificate in PEM format
+        """
+        key_path = f"/{project_name}/{account}/ca/intermediate/private-key"
+        cert_path = f"/{project_name}/{account}/ca/intermediate/certificate"
+
+        self.client.put_parameter(
+            Name=key_path,
+            Value=key_pem.decode("utf-8"),
+            Type="SecureString",
+            Overwrite=True,
+        )
+        self.client.put_parameter(
+            Name=cert_path,
+            Value=cert_pem.decode("utf-8"),
+            Type="String",
+            Overwrite=True,
+        )
 
     def client_exists(self, project_name: str, account: str, client_id: str) -> bool:
         """Check if client certificate already provisioned in SSM.

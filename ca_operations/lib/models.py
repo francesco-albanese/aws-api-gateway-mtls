@@ -2,6 +2,20 @@
 
 from dataclasses import dataclass
 from pathlib import Path
+from typing import NotRequired, TypedDict
+
+
+class CertificateMetadata(TypedDict):
+    """Certificate metadata from DynamoDB."""
+
+    serialNumber: str
+    client_id: NotRequired[str]
+    clientName: str
+    status: str
+    issuedAt: str
+    expiry: str
+    notBefore: str
+    ttl: int
 
 
 @dataclass
@@ -32,3 +46,19 @@ class ClientCertResult:
     csr_path: Path
     metadata_path: Path
     serial_number: str
+
+
+@dataclass
+class RotationResult:
+    """Result from intermediate CA rotation.
+
+    Contains counts and details of rotation operation.
+    """
+
+    reissued_count: int
+    revoked_count: int
+    failed_count: int
+    new_intermediate_serial: str
+    truststore_version_id: str
+    reissued_serials: list[str]
+    failed_client_ids: list[str]

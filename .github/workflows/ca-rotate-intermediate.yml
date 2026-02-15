@@ -1,0 +1,108 @@
+name: Rotate Intermediate CA
+
+on:
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Environment to rotate intermediate CA for'
+        required: true
+        type: choice
+        options:
+          - sandbox
+          - staging
+          - uat
+          - production
+        default: 'sandbox'
+      dry_run:
+        description: 'Preview rotation without making AWS changes'
+        required: true
+        type: boolean
+        default: true
+
+env:
+  AWS_REGION: eu-west-2
+  PYTHON_VERSION: '3.13.7'
+
+jobs:
+  rotate-intermediate:
+    name: Rotate Intermediate CA
+    runs-on: ubuntu-latest
+
+    permissions:
+      id-token: write
+      contents: read
+
+    environment:
+      name: ${{ github.event.inputs.environment }}
+
+    env:
+      ACCOUNT: ${{ github.event.inputs.environment }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Python & UV
+        uses: ./.github/actions/setup-python-uv
+        with:
+          python-version: ${{ env.PYTHON_VERSION }}
+
+      - name: Configure AWS
+        uses: ./.github/actions/configure-aws-env
+        with:
+          environment: ${{ env.ACCOUNT }}
+          aws_region: ${{ env.AWS_REGION }}
+          role_arn_sandbox: ${{ secrets.AWS_ROLE_ARN_SANDBOX }}
+          role_arn_staging: ${{ secrets.AWS_ROLE_ARN_STAGING }}
+          role_arn_uat: ${{ secrets.AWS_ROLE_ARN_UAT }}
+          role_arn_production: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}
+
+      - name: Run rotation script
+        env:
+          AWS_PROFILE: ""
+        run: |
+          OUTPUT_DIR="ca_operations/output/${{ env.ACCOUNT }}/rotation"
+          mkdir -p "$OUTPUT_DIR"
+
+          DRY_RUN_FLAG=""
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            DRY_RUN_FLAG="--dry-run"
+          fi
+
+          uv run --group ca python -m ca_operations.scripts.rotate_intermediate_ca \
+            --environment "${{ env.ACCOUNT }}" \
+            --project-name "apigw-mtls" \
+            --dynamodb-table "mtls-clients-metadata" \
+            --s3-bucket "${{ env.ACCOUNT }}-mtls-truststore-${{ secrets.AWS_ACCOUNT_ID }}" \
+            --output-dir "$OUTPUT_DIR" \
+            $DRY_RUN_FLAG
+
+      - name: Upload rotation artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: rotation-${{ env.ACCOUNT }}-${{ github.run_id }}
+          path: ca_operations/output/${{ env.ACCOUNT }}/rotation
+          retention-days: 1
+
+      - name: Clean up sensitive files
+        if: always()
+        run: |
+          rm -rf ca_operations/output/${{ env.ACCOUNT }}
+
+      - name: Summary
+        if: success()
+        run: |
+          echo "## Intermediate CA Rotation" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "**Environment:** ${{ env.ACCOUNT }}" >> $GITHUB_STEP_SUMMARY
+          echo "**Dry Run:** ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          if [ "${{ github.event.inputs.dry_run }}" = "true" ]; then
+            echo "> Preview only - no AWS changes were made" >> $GITHUB_STEP_SUMMARY
+          else
+            echo "### Actions Performed:" >> $GITHUB_STEP_SUMMARY
+            echo "- Generated new Intermediate CA" >> $GITHUB_STEP_SUMMARY
+            echo "- Updated SSM parameters" >> $GITHUB_STEP_SUMMARY
+            echo "- Re-issued all active client certificates" >> $GITHUB_STEP_SUMMARY
+            echo "- Updated S3 truststore" >> $GITHUB_STEP_SUMMARY
+          fi

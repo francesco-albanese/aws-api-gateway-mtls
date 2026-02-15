@@ -1,12 +1,12 @@
 [project]
 name = "mtls-authorizer-lambda"
 version = "0.1.0"
-description = "Custom authorizer Lambda - validates JWT and mTLS cert for API Gateway"
+description = "Custom authorizer Lambda - validates mTLS client cert via DynamoDB for API Gateway"
 requires-python = ">=3.13"
-dependencies = ["PyJWT>=2.10.0", "cryptography>=44.0.0"]
+dependencies = ["boto3>=1.42.0"]
 
 [dependency-groups]
-dev = ["pytest>=8.0.0", "ruff>=0.8.0", "pyright>=1.1.391", "boto3>=1.42.0"]
+dev = ["pytest>=8.0.0", "ruff>=0.8.0", "pyright>=1.1.391"]
 
 [build-system]
 requires = ["hatchling"]
@@ -29,3 +29,4 @@ pythonpath = ["."]
 pythonVersion = "3.13"
 typeCheckingMode = "standard"
 include = ["src", "tests"]
+extraPaths = ["src"]
