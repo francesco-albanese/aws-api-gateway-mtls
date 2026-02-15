@@ -179,6 +179,7 @@ class DynamoDBClient:
                             "Item": {
                                 k: {"S": str(v)} if isinstance(v, str) else {"N": str(v)}
                                 for k, v in new_metadata.items()
+                                if v is not None
                             },
                         }
                     },
