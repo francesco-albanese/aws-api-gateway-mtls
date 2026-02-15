@@ -233,13 +233,6 @@ class TestBuildIntermediateCA:
         intermediate_dn: DistinguishedName,
     ) -> None:
         """build_intermediate_ca raises ValueError for tampered CSR."""
-        # Create CSR signed by one key
-        legit_key = generate_private_key(key_size=2048)
-        csr = (
-            x509.CertificateSigningRequestBuilder()
-            .subject_name(intermediate_dn.to_x509_name())
-            .sign(legit_key, hashes.SHA256())
-        )
         # Tamper: rebuild with different key to invalidate signature
         tampered_key = generate_private_key(key_size=2048)
         tampered_csr = (
@@ -247,21 +240,23 @@ class TestBuildIntermediateCA:
             .subject_name(intermediate_dn.to_x509_name())
             .sign(tampered_key, hashes.SHA256())
         )
-        # Manually corrupt the signature by swapping public key bytes
         # Since we can't easily create an invalid CSR with cryptography lib,
         # we mock validate_csr_signature to return False
         from unittest.mock import patch
 
-        with patch(
-            "ca_operations.lib.certificate_builder.validate_csr_signature", return_value=False
+        with (
+            patch(
+                "ca_operations.lib.certificate_builder.validate_csr_signature",
+                return_value=False,
+            ),
+            pytest.raises(ValueError, match="CSR signature validation failed"),
         ):
-            with pytest.raises(ValueError, match="CSR signature validation failed"):
-                CertificateBuilder.build_intermediate_ca(
-                    csr=tampered_csr,
-                    root_cert=root_cert,
-                    root_key=root_key,
-                    validity_years=1,
-                )
+            CertificateBuilder.build_intermediate_ca(
+                csr=tampered_csr,
+                root_cert=root_cert,
+                root_key=root_key,
+                validity_years=1,
+            )
 
     def test_chain_validates_intermediate_to_root(
         self,
@@ -310,16 +305,19 @@ class TestBuildClientCertificate:
         )
         from unittest.mock import patch
 
-        with patch(
-            "ca_operations.lib.certificate_builder.validate_csr_signature", return_value=False
+        with (
+            patch(
+                "ca_operations.lib.certificate_builder.validate_csr_signature",
+                return_value=False,
+            ),
+            pytest.raises(ValueError, match="CSR signature validation failed"),
         ):
-            with pytest.raises(ValueError, match="CSR signature validation failed"):
-                CertificateBuilder.build_client_certificate(
-                    csr=csr,
-                    issuer_cert=intermediate_cert,
-                    issuer_key=intermediate_key,
-                    validity_days=30,
-                )
+            CertificateBuilder.build_client_certificate(
+                csr=csr,
+                issuer_cert=intermediate_cert,
+                issuer_key=intermediate_key,
+                validity_days=30,
+            )
 
     def test_validity_period_matches_input_days(
         self,

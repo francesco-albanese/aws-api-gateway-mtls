@@ -7,6 +7,8 @@ import sys
 from datetime import date
 from pathlib import Path
 
+from cryptography.hazmat.primitives.asymmetric.rsa import RSAPrivateKey, RSAPublicKey
+
 from ca_operations.lib.ca_utils import create_intermediate_ca
 from ca_operations.lib.cert_utils import (
     create_truststore_bundle,
@@ -27,6 +29,25 @@ from ca_operations.lib.ssm_client import SSMClient
 
 ENVIRONMENTS = ["sandbox", "staging", "uat", "production"]
 PROJECT_NAME = "apigw-mtls"
+
+
+def verify_keys_certs_valid(
+    new_intermediate_key: RSAPrivateKey, new_key_pem: bytes, new_cert_pem: bytes
+):
+    """
+    Verifies that the new serialized certificate and the new private key
+    can be deserialized back into valid objects that match the originals.
+    """
+    deserialised_new_cert_pem = deserialize_certificate(new_cert_pem)
+    public_key = deserialised_new_cert_pem.public_key()
+    if not isinstance(public_key, RSAPublicKey):
+        raise RuntimeError("Expected RSA public key")
+    if public_key.public_numbers() != new_intermediate_key.public_key().public_numbers():
+        raise RuntimeError("Key-cert mismatch after serialization")
+
+    deserialised_new_key_pem = deserialize_private_key(new_key_pem)
+    if deserialised_new_key_pem.public_key().public_numbers() != public_key.public_numbers():
+        raise RuntimeError("Key PEM mismatch after serialization")
 
 
 def rotate_intermediate_ca(
@@ -80,6 +101,12 @@ def rotate_intermediate_ca(
     # Serialize new intermediate artifacts
     new_key_pem = serialize_private_key(new_intermediate_key)
     new_cert_pem = serialize_certificate(new_intermediate_cert)
+
+    verify_keys_certs_valid(
+        new_intermediate_key=new_intermediate_key,
+        new_key_pem=new_key_pem,
+        new_cert_pem=new_cert_pem,
+    )
 
     # Store new intermediate CA in SSM
     if not dry_run:

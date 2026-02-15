@@ -44,7 +44,10 @@ def serialize_certificate(cert: x509.Certificate) -> bytes:
 
 def deserialize_certificate(pem_data: bytes) -> x509.Certificate:
     """Deserialize certificate from PEM bytes."""
-    return x509.load_pem_x509_certificate(pem_data)
+    certificate = x509.load_pem_x509_certificate(pem_data)
+    if not isinstance(certificate, x509.Certificate):
+        raise ValueError("expected valid certificate")
+    return certificate
 
 
 def generate_serial_number() -> int:

@@ -29,7 +29,7 @@ def _parse_item_to_metadata(
         issuedAt=str(item["issuedAt"]),
         expiry=str(item["expiry"]),
         notBefore=str(item["notBefore"]),
-        ttl=int(item['ttl']),
+        ttl=int(cast(int, raw_ttl)),
     )
     client_id = item.get("client_id")
     if client_id is not None:
@@ -161,7 +161,9 @@ class DynamoDBClient:
                             "TableName": table_name,
                             "Key": {"serialNumber": {"S": old_serial}},
                             "UpdateExpression": "SET #s = :status",
-                            "ConditionExpression": "attribute_exists(serialNumber) AND #s = :active",
+                            "ConditionExpression": (
+                                "attribute_exists(serialNumber) AND #s = :active"
+                            ),
                             "ExpressionAttributeNames": {"#s": "status"},
                             "ExpressionAttributeValues": {
                                 ":status": {"S": "revoked"},

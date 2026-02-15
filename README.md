@@ -63,7 +63,7 @@ AWS API Gateway requires a custom domain for mTLS - cannot enforce client certif
 
 ## Security
 
-Root CA keys stored in SSM Parameter Store (SecureString, KMS-encrypted). In production, root CA keys would be managed via AWS CloudHSM or AWS Private CA for FIPS 140-3 Level 3 hardware protection.
+Root CA keys stored in SSM Parameter Store (SecureString, KMS-encrypted). In production, root CA keys would be managed via AWS CloudHSM.
 
 ## Observability
 
