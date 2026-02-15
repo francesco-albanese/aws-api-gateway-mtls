@@ -9,7 +9,8 @@
       "Bash(uv sync:*)",
       "Bash(prek run)",
       "WebSearch",
-      "Bash(uv run pytest:*)"
+      "Bash(uv run pytest:*)",
+      "Bash(prek run:*)"
     ]
   },
   "outputStyle": "default",
