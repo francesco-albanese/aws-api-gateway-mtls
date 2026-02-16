@@ -59,7 +59,6 @@ def _make_cert_metadata(client_id: str, serial_number: str) -> dict[str, str]:
         "status": "active",
         "issuedAt": now.isoformat(),
         "expiry": now.isoformat(),
-        "notBefore": now.isoformat(),
         "ttl": "1735689600",
     }
 

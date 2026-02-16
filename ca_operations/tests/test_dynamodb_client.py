@@ -43,7 +43,6 @@ class TestDynamoDBClient:
                     "status": "active",
                     "issuedAt": "2025-01-01T00:00:00+00:00",
                     "expiry": "2026-01-01T00:00:00+00:00",
-                    "notBefore": "2025-01-01T00:00:00+00:00",
                     "ttl": 1735689600,
                 }
             ]
@@ -72,7 +71,6 @@ class TestDynamoDBClient:
                         "status": "active",
                         "issuedAt": "",
                         "expiry": "",
-                        "notBefore": "",
                         "ttl": 0,
                     }
                 ],
@@ -86,7 +84,6 @@ class TestDynamoDBClient:
                         "status": "active",
                         "issuedAt": "",
                         "expiry": "",
-                        "notBefore": "",
                         "ttl": 0,
                     }
                 ],
@@ -111,7 +108,6 @@ class TestDynamoDBClient:
                     "status": "active",
                     "issuedAt": "2025-01-01T00:00:00+00:00",
                     "expiry": "2026-01-01T00:00:00+00:00",
-                    "notBefore": "2025-01-01T00:00:00+00:00",
                     "ttl": 1735689600,
                 }
             ]
@@ -165,7 +161,6 @@ class TestDynamoDBClient:
             status="active",
             issuedAt="2025-01-01T00:00:00+00:00",
             expiry="2026-01-01T00:00:00+00:00",
-            notBefore="2025-01-01T00:00:00+00:00",
             ttl=1735689600,
         )
         result = client.put_certificate_metadata("test-table", metadata)
@@ -202,7 +197,6 @@ class TestDynamoDBClient:
             status="active",
             issuedAt="2025-01-01T00:00:00+00:00",
             expiry="2026-01-01T00:00:00+00:00",
-            notBefore="2025-01-01T00:00:00+00:00",
             ttl=1735689600,
         )
         result = client.put_certificate_metadata("test-table", metadata)
@@ -222,7 +216,6 @@ class TestDynamoDBClient:
             status="active",
             issuedAt="2025-01-01T00:00:00+00:00",
             expiry="2026-01-01T00:00:00+00:00",
-            notBefore="2025-01-01T00:00:00+00:00",
             ttl=1735689600,
         )
         result = client.rotate_certificate("test-table", "OLD:SERIAL", new_metadata)
@@ -257,7 +250,6 @@ class TestDynamoDBClient:
             status="active",
             issuedAt="2025-01-01T00:00:00+00:00",
             expiry="2026-01-01T00:00:00+00:00",
-            notBefore="2025-01-01T00:00:00+00:00",
             ttl=1735689600,
         )
         result = client.rotate_certificate("test-table", "OLD:SERIAL", new_metadata)

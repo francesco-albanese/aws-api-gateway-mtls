@@ -159,18 +159,17 @@ class TestCertificateMetadata:
         assert "clientName" in metadata
         assert metadata["clientName"] == "test-client-001"
 
-    def test_extract_metadata_has_validity_dates(
+    def test_extract_metadata_has_expiry(
         self,
         client_cert: x509.Certificate,
     ) -> None:
-        """Metadata includes notBefore and expiry timestamps."""
+        """Metadata includes expiry timestamp."""
         metadata = extract_certificate_metadata(client_cert)
 
-        assert "notBefore" in metadata
         assert "expiry" in metadata
+        assert "notBefore" not in metadata
 
         # Should be ISO8601 format (parseable)
-        datetime.fromisoformat(str(metadata["notBefore"]))
         datetime.fromisoformat(str(metadata["expiry"]))
 
     def test_extract_metadata_has_status_active(

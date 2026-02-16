@@ -75,7 +75,6 @@ Formatted as hex with colons for readability and OpenSSL compatibility.
 {
   "serialNumber": "3A:F2:B1:4C:...",
   "CN": "api-client-001",
-  "notBefore": "2025-12-13T10:00:00+00:00",
   "notAfter": "2027-01-12T10:00:00+00:00",
   "status": "active",
   "issuedAt": "2025-12-13T10:05:12+00:00",
