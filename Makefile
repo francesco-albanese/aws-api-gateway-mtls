@@ -11,6 +11,7 @@ include makefiles/env.mk
 include makefiles/terraform.mk
 include makefiles/ca.mk
 include makefiles/lambda.mk
+include makefiles/api.mk
 
 .PHONY: init plan apply destroy validate fmt test lint lint-fix
 

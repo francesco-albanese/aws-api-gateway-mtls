@@ -28,6 +28,17 @@ The [`client-provision.yml`](../.github/workflows/client-provision.yml) workflow
 
 Manual testing of health endpoint with mTLS certificates.
 
+### Quick (via Make)
+
+```bash
+make curl-health                                    # defaults (sandbox, api-client-001)
+make curl-health ACCOUNT=uat CLIENT_ID=api-client-002
+make curl-health-verbose                            # TLS handshake debug output
+make curl-health-clean                              # wipe cached certs
+```
+
+### Step-by-step
+
 ## Pull Certs from SSM
 
 ```bash
