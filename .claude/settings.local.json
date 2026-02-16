@@ -10,7 +10,8 @@
       "Bash(prek run)",
       "WebSearch",
       "Bash(uv run pytest:*)",
-      "Bash(prek run:*)"
+      "Bash(prek run:*)",
+      "WebFetch(domain:github.com)"
     ]
   },
   "outputStyle": "default",
