@@ -102,6 +102,9 @@ override.tf.json
 *_override.tf.json
 **/lambda/*.zip
 
+# Cached certs
+.tmp/
+
 # IDE
 .vscode/
 .idea/
