@@ -61,7 +61,7 @@ else
 fi
 
 echo "Curling ${API_URL}${ENDPOINT}"
-curl -s $VERBOSE \
+curl -s ${VERBOSE:+"$VERBOSE"} \
   --cert "$CERT_FILE" \
   --key "$KEY_FILE" \
   "${API_URL}${ENDPOINT}" | jq .
