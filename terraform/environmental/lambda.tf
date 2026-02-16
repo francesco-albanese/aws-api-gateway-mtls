@@ -19,12 +19,18 @@ resource "aws_lambda_function" "health" {
   image_uri     = "${data.aws_ecr_repository.health_lambda.repository_url}:${var.health_lambda_image_tag}"
   architectures = ["arm64"]
   timeout       = 30
-  memory_size   = 128
+  memory_size   = 256
 
   environment {
     variables = {
       AWS_LAMBDA_EXEC_WRAPPER = "/opt/otel-instrument"
+      OTEL_SERVICE_NAME       = "mtls-api-health"
+      OTEL_AWS_APPLICATION_SIGNALS_ENABLED = "true"
     }
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 
   tags = {
@@ -66,6 +72,11 @@ resource "aws_iam_role_policy_attachment" "health_lambda_application_signals" {
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchLambdaApplicationSignalsExecutionRolePolicy"
 }
 
+resource "aws_iam_role_policy_attachment" "health_xray" {
+  role       = aws_iam_role.health_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
+}
+
 resource "aws_iam_role" "authorizer_lambda" {
   name = "mtls-api-authorizer-lambda"
 
@@ -93,6 +104,11 @@ resource "aws_iam_role_policy_attachment" "authorizer_lambda_basic" {
 resource "aws_iam_role_policy_attachment" "authorizer_lambda_application_signals" {
   role       = aws_iam_role.authorizer_lambda.name
   policy_arn = "arn:aws:iam::aws:policy/CloudWatchLambdaApplicationSignalsExecutionRolePolicy"
+}
+
+resource "aws_iam_role_policy_attachment" "authorizer_xray" {
+  role       = aws_iam_role.authorizer_lambda.name
+  policy_arn = "arn:aws:iam::aws:policy/AWSXRayDaemonWriteAccess"
 }
 
 # Authorizer lambda needs DynamoDB read access for cert validation
@@ -154,14 +170,20 @@ resource "aws_lambda_function" "authorizer" {
   package_type  = "Image"
   image_uri     = "${data.aws_ecr_repository.authorizer_lambda.repository_url}:${var.authorizer_lambda_image_tag}"
   architectures = ["arm64"]
-  timeout       = 10
-  memory_size   = 128
+  timeout       = 30
+  memory_size   = 256
 
   environment {
     variables = {
       DYNAMODB_TABLE_NAME     = aws_dynamodb_table.mtls_clients_metadata.name
       AWS_LAMBDA_EXEC_WRAPPER = "/opt/otel-instrument"
+      OTEL_SERVICE_NAME                    = "mtls-api-authorizer"
+      OTEL_AWS_APPLICATION_SIGNALS_ENABLED = "true"
     }
+  }
+
+  tracing_config {
+    mode = "Active"
   }
 
   tags = {
