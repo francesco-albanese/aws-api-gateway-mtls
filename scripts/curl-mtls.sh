@@ -38,16 +38,24 @@ else
   echo "Downloading certs from SSM for ${CLIENT_ID} (${ACCOUNT})..."
   mkdir -p "$CACHE_DIR"
 
-  aws ssm get-parameter \
+  if ! aws ssm get-parameter \
     --profile "$AWS_PROFILE" \
     --name "/${PROJECT_NAME}/${ACCOUNT}/clients/${CLIENT_ID}/certificate" \
-    --query 'Parameter.Value' --output text > "$CERT_FILE"
+    --query 'Parameter.Value' --output text > "$CERT_FILE"; then
+    rm -f "$CERT_FILE"
+    echo "Error: failed to fetch certificate from SSM" >&2
+    exit 1
+  fi
 
-  aws ssm get-parameter \
+  if ! aws ssm get-parameter \
     --profile "$AWS_PROFILE" \
     --name "/${PROJECT_NAME}/${ACCOUNT}/clients/${CLIENT_ID}/private-key" \
     --with-decryption \
-    --query 'Parameter.Value' --output text > "$KEY_FILE"
+    --query 'Parameter.Value' --output text > "$KEY_FILE"; then
+    rm -f "$CERT_FILE" "$KEY_FILE"
+    echo "Error: failed to fetch private key from SSM" >&2
+    exit 1
+  fi
 
   chmod 600 "$KEY_FILE"
   echo "Certs cached in ${CACHE_DIR}"
@@ -61,7 +69,17 @@ else
 fi
 
 echo "Curling ${API_URL}${ENDPOINT}"
-curl -s ${VERBOSE:+"$VERBOSE"} \
+RESPONSE=$(curl -s -w "\n%{http_code}" ${VERBOSE:+"$VERBOSE"} \
   --cert "$CERT_FILE" \
   --key "$KEY_FILE" \
-  "${API_URL}${ENDPOINT}" | jq .
+  "${API_URL}${ENDPOINT}")
+HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+BODY=$(echo "$RESPONSE" | sed '$d')
+
+if echo "$BODY" | jq . 2>/dev/null; then
+  :
+else
+  echo "HTTP ${HTTP_CODE}"
+  echo "$BODY"
+  exit 1
+fi
