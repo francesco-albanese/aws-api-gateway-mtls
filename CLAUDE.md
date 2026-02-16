@@ -11,7 +11,7 @@ AWS API Gateway HTTP regional endpoint with mTLS enforcement. Uses certificate c
 - aws services with `boto3`
 - terraform deployment via Github actions and workflows
 - [Github Actions and workflows](.github/)
-- [Instructions on what operations to run on CI and what order](.github/README.md)
+- [Instructions on what operations to run on CI and what order](.github/GITHUB_OIDC_SETUP.md)
 
 ## Git Hooks
 
