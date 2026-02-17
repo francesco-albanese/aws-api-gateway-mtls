@@ -32,17 +32,18 @@ RUN dnf install -y unzip && \
 
 # Install ADOT packages via uv (compiled for Python 3.13 ARM64)
 RUN uv pip install --system --target /opt/python \
-    aws-opentelemetry-distro \
-    opentelemetry-instrumentation-aws-lambda
+    aws-opentelemetry-distro==${ADOT_VERSION}
 
-# Create opentelemetry-instrument entry point
-# (otel-instrument script calls python3 /opt/python/bin/opentelemetry-instrument)
+# Create opentelemetry-instrument entry point via official [project.scripts] API
+# (otel-instrument wrapper calls python3 /opt/python/bin/opentelemetry-instrument)
 RUN printf '#!/usr/bin/env python3\nfrom opentelemetry.instrumentation.auto_instrumentation import run\nrun()\n' \
     > /opt/python/bin/opentelemetry-instrument && \
     chmod 755 /opt/python/bin/opentelemetry-instrument
 
 FROM public.ecr.aws/lambda/python:3.13-arm64
 ARG LAMBDA_NAME
+# Container images don't get Lambda layer auto-paths; PYTHONPATH needed for OTEL packages
+ENV PYTHONPATH="/opt/python"
 COPY --from=adot /opt/otel-instrument /opt/otel-instrument
 COPY --from=adot /opt/python /opt/python
 COPY --from=builder /app/.venv/lib/python3.13/site-packages ${LAMBDA_TASK_ROOT}
