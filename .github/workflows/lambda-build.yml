@@ -32,8 +32,8 @@ jobs:
       - name: Detect Lambda directories
         id: detect
         run: |
-          # Find all Lambda directories with pyproject.toml (excludes shared Dockerfile dir)
-          lambdas=$(find lambdas -maxdepth 2 -name pyproject.toml -exec dirname {} \; | xargs -I {} basename {} | jq -R -s -c 'split("\n") | map(select(length > 0))')
+          # Find all Lambda directories with pyproject.toml (excludes shared Dockerfile dir and adot support dir)
+          lambdas=$(find lambdas -maxdepth 2 -name pyproject.toml -not -path "lambdas/adot/*" -exec dirname {} \; | xargs -I {} basename {} | jq -R -s -c 'split("\n") | map(select(length > 0))')
           echo "lambdas=$lambdas" >> $GITHUB_OUTPUT
           echo "Detected Lambdas: $lambdas"
 
