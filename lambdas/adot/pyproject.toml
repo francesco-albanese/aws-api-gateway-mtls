@@ -1,0 +1,9 @@
+[project]
+name = "adot-layer"
+version = "0.15.0"
+requires-python = ">=3.13"
+dependencies = ["aws-opentelemetry-distro==0.15.0"]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
