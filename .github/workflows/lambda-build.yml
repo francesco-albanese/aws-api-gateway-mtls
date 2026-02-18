@@ -107,6 +107,10 @@ jobs:
     needs: build-and-push
     # Non-sandbox environments require manual terraform-deploy workflow dispatch
     if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'sandbox')
+    permissions:
+      id-token: write
+      contents: read
+      pull-requests: write
     uses: ./.github/workflows/terraform-deploy.yml
     with:
       environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'sandbox' }}
