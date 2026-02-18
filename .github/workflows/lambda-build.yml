@@ -51,6 +51,9 @@ jobs:
       id-token: write
       contents: read
 
+    environment:
+      name: ${{ steps.set-env.outputs.environment }}
+
     steps:
       - name: Set environment
         id: set-env
@@ -70,14 +73,8 @@ jobs:
         with:
           environment: ${{ steps.set-env.outputs.environment }}
           aws_region: ${{ env.AWS_REGION }}
-          role_arn_sandbox: ${{ secrets.AWS_ROLE_ARN_SANDBOX }}
-          role_arn_staging: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-          role_arn_uat: ${{ secrets.AWS_ROLE_ARN_UAT }}
-          role_arn_production: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}
-          ecr_registry_sandbox: ${{ secrets.ECR_REGISTRY_SANDBOX }}
-          ecr_registry_staging: ${{ secrets.ECR_REGISTRY_STAGING }}
-          ecr_registry_uat: ${{ secrets.ECR_REGISTRY_UAT }}
-          ecr_registry_production: ${{ secrets.ECR_REGISTRY_PRODUCTION }}
+          role_arn: ${{ secrets.AWS_ROLE_ARN }}
+          ecr_registry: ${{ secrets.ECR_REGISTRY }}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -104,3 +101,15 @@ jobs:
           tags: |
             ${{ steps.aws-config.outputs.ecr_registry }}/mtls-api-${{ matrix.lambda }}-lambda:${{ github.sha }}
             ${{ steps.aws-config.outputs.ecr_registry }}/mtls-api-${{ matrix.lambda }}-lambda:latest
+
+  deploy:
+    name: Deploy Lambdas
+    needs: build-and-push
+    # Non-sandbox environments require manual terraform-deploy workflow dispatch
+    if: github.event_name == 'push' || (github.event_name == 'workflow_dispatch' && inputs.environment == 'sandbox')
+    uses: ./.github/workflows/terraform-deploy.yml
+    with:
+      environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'sandbox' }}
+      health_lambda_image_tag: ${{ github.sha }}
+      authorizer_lambda_image_tag: ${{ github.sha }}
+    secrets: inherit

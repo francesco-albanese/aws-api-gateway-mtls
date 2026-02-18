@@ -14,6 +14,32 @@ on:
           - uat
           - production
         default: 'sandbox'
+      health_lambda_image_tag:
+        description: 'Image tag for health Lambda (git SHA or latest)'
+        required: false
+        type: string
+        default: 'latest'
+      authorizer_lambda_image_tag:
+        description: 'Image tag for authorizer Lambda (git SHA or latest)'
+        required: false
+        type: string
+        default: 'latest'
+  workflow_call:
+    inputs:
+      environment:
+        description: 'Target environment'
+        required: true
+        type: string
+      health_lambda_image_tag:
+        description: 'Image tag for health Lambda (git SHA or latest)'
+        required: false
+        type: string
+        default: 'latest'
+      authorizer_lambda_image_tag:
+        description: 'Image tag for authorizer Lambda (git SHA or latest)'
+        required: false
+        type: string
+        default: 'latest'
 
 env:
   AWS_REGION: eu-west-2
@@ -28,6 +54,9 @@ jobs:
       contents: read
       pull-requests: write
 
+    environment:
+      name: ${{ steps.set-env.outputs.environment }}
+
     outputs:
       environment: ${{ steps.set-env.outputs.environment }}
       exitcode: ${{ steps.plan.outputs.exitcode }}
@@ -36,8 +65,8 @@ jobs:
       - name: Set environment
         id: set-env
         run: |
-          if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
-            echo "environment=${{ github.event.inputs.environment }}" >> $GITHUB_OUTPUT
+          if [ -n "${{ inputs.environment }}" ]; then
+            echo "environment=${{ inputs.environment }}" >> $GITHUB_OUTPUT
           else
             echo "environment=sandbox" >> $GITHUB_OUTPUT
           fi
@@ -50,10 +79,7 @@ jobs:
         with:
           environment: ${{ steps.set-env.outputs.environment }}
           aws_region: ${{ env.AWS_REGION }}
-          role_arn_sandbox: ${{ secrets.AWS_ROLE_ARN_SANDBOX }}
-          role_arn_staging: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-          role_arn_uat: ${{ secrets.AWS_ROLE_ARN_UAT }}
-          role_arn_production: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}
+          role_arn: ${{ secrets.AWS_ROLE_ARN }}
           setup_terraform: 'true'
 
       - name: Terraform Init
@@ -74,7 +100,14 @@ jobs:
           ACCOUNT: ${{ steps.set-env.outputs.environment }}
         run: |
           set +e
-          make environmental-plan ACCOUNT=${{ env.ACCOUNT }}
+          IMAGE_TAG_FLAGS=""
+          if [ "${{ inputs.health_lambda_image_tag }}" != "latest" ] && [ -n "${{ inputs.health_lambda_image_tag }}" ]; then
+            IMAGE_TAG_FLAGS="${IMAGE_TAG_FLAGS} -var=health_lambda_image_tag=${{ inputs.health_lambda_image_tag }}"
+          fi
+          if [ "${{ inputs.authorizer_lambda_image_tag }}" != "latest" ] && [ -n "${{ inputs.authorizer_lambda_image_tag }}" ]; then
+            IMAGE_TAG_FLAGS="${IMAGE_TAG_FLAGS} -var=authorizer_lambda_image_tag=${{ inputs.authorizer_lambda_image_tag }}"
+          fi
+          make environmental-plan ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="${IMAGE_TAG_FLAGS}"
           exitcode=$?
           echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
           exit $exitcode
@@ -94,7 +127,13 @@ jobs:
   terraform-apply:
     name: Terraform Apply
     needs: terraform-plan
-    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' && needs.terraform-plan.outputs.exitcode == '0'
+    if: |
+      github.ref == 'refs/heads/main' &&
+      needs.terraform-plan.outputs.exitcode == '0' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'workflow_call' && needs.terraform-plan.outputs.environment == 'sandbox')
+      )
     runs-on: ubuntu-latest
 
     permissions:
@@ -113,10 +152,7 @@ jobs:
         with:
           environment: ${{ needs.terraform-plan.outputs.environment }}
           aws_region: ${{ env.AWS_REGION }}
-          role_arn_sandbox: ${{ secrets.AWS_ROLE_ARN_SANDBOX }}
-          role_arn_staging: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-          role_arn_uat: ${{ secrets.AWS_ROLE_ARN_UAT }}
-          role_arn_production: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}
+          role_arn: ${{ secrets.AWS_ROLE_ARN }}
           setup_terraform: 'true'
 
       - name: Terraform Init
@@ -129,4 +165,12 @@ jobs:
         env:
           AWS_PROFILE: ""
           ACCOUNT: ${{ needs.terraform-plan.outputs.environment }}
-        run: make environmental-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS='-auto-approve'
+        run: |
+          IMAGE_TAG_FLAGS=""
+          if [ "${{ inputs.health_lambda_image_tag }}" != "latest" ] && [ -n "${{ inputs.health_lambda_image_tag }}" ]; then
+            IMAGE_TAG_FLAGS="${IMAGE_TAG_FLAGS} -var=health_lambda_image_tag=${{ inputs.health_lambda_image_tag }}"
+          fi
+          if [ "${{ inputs.authorizer_lambda_image_tag }}" != "latest" ] && [ -n "${{ inputs.authorizer_lambda_image_tag }}" ]; then
+            IMAGE_TAG_FLAGS="${IMAGE_TAG_FLAGS} -var=authorizer_lambda_image_tag=${{ inputs.authorizer_lambda_image_tag }}"
+          fi
+          make environmental-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS='-auto-approve '"${IMAGE_TAG_FLAGS}"
