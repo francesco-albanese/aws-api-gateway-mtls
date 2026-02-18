@@ -67,12 +67,9 @@ def generate_serial_number() -> int:
     return int(uuid.uuid4())
 
 
-def get_certificate_serial_hex(cert: x509.Certificate) -> str:
-    """Return certificate serial number as hex with colons (e.g., 3A:F2:B1:...)."""
-    serial_hex = f"{cert.serial_number:X}"
-    if len(serial_hex) % 2 != 0:
-        serial_hex = "0" + serial_hex
-    return ":".join(serial_hex[i : i + 2] for i in range(0, len(serial_hex), 2))
+def get_certificate_serial_decimal(cert: x509.Certificate) -> str:
+    """Return certificate serial number as decimal string matching API Gateway format."""
+    return str(cert.serial_number)
 
 
 def extract_certificate_metadata(
@@ -97,7 +94,7 @@ def extract_certificate_metadata(
     ttl_datetime = not_after + timedelta(days=90)
 
     metadata = CertificateMetadata(
-        serialNumber=get_certificate_serial_hex(cert),
+        serialNumber=get_certificate_serial_decimal(cert),
         clientName=cn,
         expiry=not_after.isoformat(),
         status="active",

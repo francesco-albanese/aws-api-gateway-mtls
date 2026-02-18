@@ -18,7 +18,7 @@ from ca_operations.lib.cert_utils import (
     extract_csr_subject,
     generate_private_key,
     generate_serial_number,
-    get_certificate_serial_hex,
+    get_certificate_serial_decimal,
     serialize_certificate,
     serialize_csr,
     serialize_private_key,
@@ -109,30 +109,15 @@ class TestSerialNumber:
         serials = [generate_serial_number() for _ in range(100)]
         assert len(set(serials)) == 100
 
-    def test_get_certificate_serial_hex_format(
+    def test_get_certificate_serial_decimal_format(
         self,
         root_cert: x509.Certificate,
     ) -> None:
-        """get_certificate_serial_hex returns colon-separated hex."""
-        serial_hex = get_certificate_serial_hex(root_cert)
+        """get_certificate_serial_decimal returns decimal digit string."""
+        serial = get_certificate_serial_decimal(root_cert)
 
-        # Should contain colons between bytes
-        assert ":" in serial_hex
-
-        # Each part should be 2 hex chars
-        parts = serial_hex.split(":")
-        for part in parts:
-            assert len(part) == 2
-            int(part, 16)  # Should be valid hex
-
-    def test_get_certificate_serial_hex_uppercase(
-        self,
-        root_cert: x509.Certificate,
-    ) -> None:
-        """Serial hex uses uppercase letters."""
-        serial_hex = get_certificate_serial_hex(root_cert)
-        # All alpha chars should be uppercase
-        assert serial_hex == serial_hex.upper()
+        assert serial.isdigit()
+        assert ":" not in serial
 
 
 class TestCertificateMetadata:
@@ -142,12 +127,13 @@ class TestCertificateMetadata:
         self,
         client_cert: x509.Certificate,
     ) -> None:
-        """Metadata includes serialNumber in hex format."""
+        """Metadata includes serialNumber as decimal digits."""
         metadata = extract_certificate_metadata(client_cert)
 
         assert "serialNumber" in metadata
         assert isinstance(metadata["serialNumber"], str)
-        assert ":" in str(metadata["serialNumber"])
+        assert str(metadata["serialNumber"]).isdigit()
+        assert ":" not in str(metadata["serialNumber"])
 
     def test_extract_metadata_has_client_name(
         self,

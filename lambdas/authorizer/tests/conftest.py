@@ -50,7 +50,7 @@ def event_with_mtls_cert(base_event: APIGatewayAuthorizerEventV2) -> APIGatewayA
         "http": {"method": "GET", "path": "/health"},
         "authentication": {
             "clientCert": {
-                "serialNumber": "ABC123DEF456",
+                "serialNumber": "302651828373057198556217564450567695063",
                 "subjectDN": "CN=test-client,O=TestOrg",
                 "issuerDN": "CN=IntermediateCA,O=TestOrg",
                 "validity": {
@@ -67,7 +67,7 @@ def event_with_mtls_cert(base_event: APIGatewayAuthorizerEventV2) -> APIGatewayA
 def active_cert_metadata() -> CertMetadata:
     """Active certificate metadata from DynamoDB."""
     return {
-        "serialNumber": "ABC123DEF456",
+        "serialNumber": "302651828373057198556217564450567695063",
         "client_id": "test-client",
         "clientName": "Test Client",
         "status": "active",
@@ -80,7 +80,7 @@ def active_cert_metadata() -> CertMetadata:
 def revoked_cert_metadata() -> CertMetadata:
     """Revoked certificate metadata."""
     return {
-        "serialNumber": "ABC123DEF456",
+        "serialNumber": "302651828373057198556217564450567695063",
         "client_id": "test-client",
         "clientName": "Test Client",
         "status": "revoked",
@@ -93,7 +93,7 @@ def revoked_cert_metadata() -> CertMetadata:
 def expired_cert_metadata() -> CertMetadata:
     """Expired certificate metadata."""
     return {
-        "serialNumber": "ABC123DEF456",
+        "serialNumber": "302651828373057198556217564450567695063",
         "client_id": "test-client",
         "clientName": "Test Client",
         "status": "active",
@@ -106,7 +106,7 @@ def expired_cert_metadata() -> CertMetadata:
 def mismatched_cert_metadata() -> CertMetadata:
     """Metadata with client_id that doesn't match CN."""
     return {
-        "serialNumber": "ABC123DEF456",
+        "serialNumber": "302651828373057198556217564450567695063",
         "client_id": "different-client",
         "clientName": "Different Client",
         "status": "active",

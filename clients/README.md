@@ -24,6 +24,21 @@ The [`client-provision.yml`](../.github/workflows/client-provision.yml) workflow
 - Manual workflow dispatch (select environment)
 - Automatically on PR merge to `main` when `clients/*.json` changes
 
+## Client Certificate Rotation
+
+The [`ca-rotate-clients.yml`](../.github/workflows/ca-rotate-clients.yml) workflow rotates client certificates without regenerating keys:
+
+1. Fetches intermediate CA from SSM
+2. Queries active certs from DynamoDB
+3. For each client: generates new cert signed by current intermediate CA, atomically revokes old + inserts new in DynamoDB, overwrites SSM cert
+4. No truststore update needed (intermediate CA unchanged)
+
+**Usage:**
+
+- `--all`: rotate all active client certificates
+- `--client-id <id>`: rotate a specific client only
+- Defaults to dry-run mode for safety
+
 ## Manual test
 
 Manual testing of health endpoint with mTLS certificates.

@@ -48,6 +48,19 @@ class ClientCertResult:
 
 
 @dataclass
+class ClientRotationResult:
+    """Result from client certificate rotation.
+
+    Contains counts and details of client cert rotation operation.
+    """
+
+    reissued_count: int
+    failed_count: int
+    reissued_serials: list[str]
+    failed_client_ids: list[str]
+
+
+@dataclass
 class RotationResult:
     """Result from intermediate CA rotation.
 

@@ -74,7 +74,7 @@ def test_happy_path(
     temp_output_dir: Path,
 ) -> None:
     """Test successful rotation with 1 active cert."""
-    cert_metadata = _make_cert_metadata("test-client-001", "123ABC")
+    cert_metadata = _make_cert_metadata("test-client-001", "1194684")
     mock_dynamodb_client.get_active_certificates.return_value = [cert_metadata]
 
     client_cert_pem = serialize_certificate(client_cert)
@@ -123,8 +123,8 @@ def test_partial_failure_skips_truststore(
     temp_output_dir: Path,
 ) -> None:
     """Test partial failure with 2 certs, 1 SSM fetch fails, truststore NOT updated."""
-    cert_metadata_1 = _make_cert_metadata("test-client-001", "123ABC")
-    cert_metadata_2 = _make_cert_metadata("test-client-002", "456DEF")
+    cert_metadata_1 = _make_cert_metadata("test-client-001", "1194684")
+    cert_metadata_2 = _make_cert_metadata("test-client-002", "4550127")
     mock_dynamodb_client.get_active_certificates.return_value = [
         cert_metadata_1,
         cert_metadata_2,
@@ -175,7 +175,7 @@ def test_dry_run_no_aws_writes(
     temp_output_dir: Path,
 ) -> None:
     """Test dry_run mode with no AWS writes."""
-    cert_metadata = _make_cert_metadata("test-client-001", "123ABC")
+    cert_metadata = _make_cert_metadata("test-client-001", "1194684")
     mock_dynamodb_client.get_active_certificates.return_value = [cert_metadata]
 
     client_cert_pem = serialize_certificate(client_cert)
@@ -293,7 +293,7 @@ def test_rotate_certificate_failure_adds_to_failed(
     temp_output_dir: Path,
 ) -> None:
     """Test rotate_certificate failure adds to failed, skips truststore."""
-    cert_metadata = _make_cert_metadata("test-client-001", "123ABC")
+    cert_metadata = _make_cert_metadata("test-client-001", "1194684")
     mock_dynamodb_client.get_active_certificates.return_value = [cert_metadata]
 
     client_cert_pem = serialize_certificate(client_cert)

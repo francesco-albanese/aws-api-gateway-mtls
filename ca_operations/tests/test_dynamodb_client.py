@@ -37,7 +37,7 @@ class TestDynamoDBClient:
         mock_table.query.return_value = {
             "Items": [
                 {
-                    "serialNumber": "AB:CD:EF:12",
+                    "serialNumber": "228408594",
                     "client_id": "client-001",
                     "clientName": "client-001",
                     "status": "active",
@@ -53,7 +53,7 @@ class TestDynamoDBClient:
         result = client.get_active_certificates("test-table")
 
         assert len(result) == 1
-        assert result[0]["serialNumber"] == "AB:CD:EF:12"
+        assert result[0]["serialNumber"] == "228408594"
         assert result[0].get("client_id") == "client-001"
         # Verify GSI is used
         call_kwargs = mock_table.query.call_args[1]
@@ -66,7 +66,7 @@ class TestDynamoDBClient:
             {
                 "Items": [
                     {
-                        "serialNumber": "AA:BB",
+                        "serialNumber": "43707",
                         "clientName": "c1",
                         "status": "active",
                         "issuedAt": "",
@@ -74,12 +74,12 @@ class TestDynamoDBClient:
                         "ttl": 0,
                     }
                 ],
-                "LastEvaluatedKey": {"serialNumber": "AA:BB"},
+                "LastEvaluatedKey": {"serialNumber": "43707"},
             },
             {
                 "Items": [
                     {
-                        "serialNumber": "CC:DD",
+                        "serialNumber": "52445",
                         "clientName": "c2",
                         "status": "active",
                         "issuedAt": "",
@@ -103,7 +103,7 @@ class TestDynamoDBClient:
         mock_table.query.return_value = {
             "Items": [
                 {
-                    "serialNumber": "AA:BB",
+                    "serialNumber": "43707",
                     "clientName": "Intermediate CA",
                     "status": "active",
                     "issuedAt": "2025-01-01T00:00:00+00:00",
@@ -126,7 +126,7 @@ class TestDynamoDBClient:
         mock_boto3.resource.return_value.Table.return_value = mock_table
 
         client = DynamoDBClient()
-        result = client.revoke_certificate("test-table", "AB:CD:EF")
+        result = client.revoke_certificate("test-table", "11259375")
 
         assert result is True
         mock_table.update_item.assert_called_once()
@@ -144,7 +144,7 @@ class TestDynamoDBClient:
         mock_boto3.resource.return_value.Table.return_value = mock_table
 
         client = DynamoDBClient()
-        result = client.revoke_certificate("test-table", "AB:CD:EF")
+        result = client.revoke_certificate("test-table", "11259375")
 
         assert result is False
 
@@ -155,7 +155,7 @@ class TestDynamoDBClient:
 
         client = DynamoDBClient()
         metadata = CertificateMetadata(
-            serialNumber="AB:CD",
+            serialNumber="43981",
             client_id="client-001",
             clientName="client-001",
             status="active",
@@ -177,7 +177,7 @@ class TestDynamoDBClient:
         mock_boto3.resource.return_value.Table.return_value = mock_table
 
         client = DynamoDBClient()
-        result = client.revoke_certificate("test-table", "AB:CD:EF")
+        result = client.revoke_certificate("test-table", "11259375")
 
         assert result is False
 
@@ -191,7 +191,7 @@ class TestDynamoDBClient:
 
         client = DynamoDBClient()
         metadata = CertificateMetadata(
-            serialNumber="AB:CD",
+            serialNumber="43981",
             client_id="client-001",
             clientName="client-001",
             status="active",
@@ -210,7 +210,7 @@ class TestDynamoDBClient:
 
         client = DynamoDBClient()
         new_metadata = CertificateMetadata(
-            serialNumber="NEW:SERIAL",
+            serialNumber="99887766",
             client_id="client-001",
             clientName="client-001",
             status="active",
@@ -218,7 +218,7 @@ class TestDynamoDBClient:
             expiry="2026-01-01T00:00:00+00:00",
             ttl=1735689600,
         )
-        result = client.rotate_certificate("test-table", "OLD:SERIAL", new_metadata)
+        result = client.rotate_certificate("test-table", "11223344", new_metadata)
 
         assert result is True
         mock_client.transact_write_items.assert_called_once()
@@ -244,7 +244,7 @@ class TestDynamoDBClient:
 
         client = DynamoDBClient()
         new_metadata = CertificateMetadata(
-            serialNumber="NEW:SERIAL",
+            serialNumber="99887766",
             client_id="client-001",
             clientName="client-001",
             status="active",
@@ -252,6 +252,6 @@ class TestDynamoDBClient:
             expiry="2026-01-01T00:00:00+00:00",
             ttl=1735689600,
         )
-        result = client.rotate_certificate("test-table", "OLD:SERIAL", new_metadata)
+        result = client.rotate_certificate("test-table", "11223344", new_metadata)
 
         assert result is False
