@@ -156,7 +156,7 @@ def rotate_client_certs(
             (client_output_dir / "metadata.json").write_text(json.dumps(new_metadata, indent=2))
 
             reissued_serials.append(new_serial)
-            LOGGER.info("Rotated %s: %s -> %s", client_id, old_serial[:20], new_serial[:20])
+            LOGGER.info("Rotated %s: %s -> %s", client_id, old_serial, new_serial)
 
         except Exception as e:
             LOGGER.error("Failed to rotate %s: %s", client_id, str(e))

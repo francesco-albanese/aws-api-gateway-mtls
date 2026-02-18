@@ -39,9 +39,10 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Check mutually exclusive inputs
+        env:
+          CLIENT_ID: ${{ github.event.inputs.client_id }}
+          ROTATE_ALL: ${{ github.event.inputs.rotate_all }}
         run: |
-          CLIENT_ID="${{ github.event.inputs.client_id }}"
-          ROTATE_ALL="${{ github.event.inputs.rotate_all }}"
 
           if [ -z "$CLIENT_ID" ] && [ "$ROTATE_ALL" != "true" ]; then
             echo "::error::One of client_id or rotate_all is required"
@@ -67,6 +68,7 @@ jobs:
 
     env:
       ACCOUNT: ${{ github.event.inputs.environment }}
+      CLIENT_ID: ${{ github.event.inputs.client_id }}
 
     steps:
       - name: Checkout code
@@ -97,8 +99,8 @@ jobs:
           fi
 
           CLIENT_ARGS=()
-          if [ -n "${{ github.event.inputs.client_id }}" ]; then
-            CLIENT_ARGS+=(--client-id "${{ github.event.inputs.client_id }}")
+          if [ -n "$CLIENT_ID" ]; then
+            CLIENT_ARGS+=(--client-id "$CLIENT_ID")
           elif [ "${{ github.event.inputs.rotate_all }}" = "true" ]; then
             CLIENT_ARGS+=(--all)
           fi
@@ -130,8 +132,8 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "**Environment:** ${{ env.ACCOUNT }}" >> $GITHUB_STEP_SUMMARY
           echo "**Dry Run:** ${{ github.event.inputs.dry_run }}" >> $GITHUB_STEP_SUMMARY
-          if [ -n "${{ github.event.inputs.client_id }}" ]; then
-            echo "**Client ID:** ${{ github.event.inputs.client_id }}" >> $GITHUB_STEP_SUMMARY
+          if [ -n "$CLIENT_ID" ]; then
+            echo "**Client ID:** $CLIENT_ID" >> $GITHUB_STEP_SUMMARY
           else
             echo "**Scope:** All active clients" >> $GITHUB_STEP_SUMMARY
           fi
