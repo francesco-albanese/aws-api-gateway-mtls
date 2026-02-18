@@ -5,7 +5,10 @@ import logging
 import boto3
 from botocore.exceptions import ClientError
 
-from ._types import CertMetadata
+try:
+    from _types import CertMetadata  # type: ignore[reportMissingImports]
+except ImportError:
+    from ._types import CertMetadata
 
 logger = logging.getLogger(__name__)
 

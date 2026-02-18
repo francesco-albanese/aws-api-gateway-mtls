@@ -2,7 +2,10 @@
 
 from datetime import UTC, datetime
 
-from ._types import CertMetadata
+try:
+    from _types import CertMetadata  # type: ignore[reportMissingImports]
+except ImportError:
+    from ._types import CertMetadata
 
 
 def validate_cert_status(metadata: CertMetadata) -> tuple[bool, str]:

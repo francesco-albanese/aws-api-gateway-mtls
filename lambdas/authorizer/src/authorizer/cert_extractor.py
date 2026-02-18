@@ -1,6 +1,9 @@
 """Certificate extraction from API Gateway mTLS context."""
 
-from ._types import APIGatewayAuthorizerEventV2
+try:
+    from _types import APIGatewayAuthorizerEventV2  # type: ignore[reportMissingImports]
+except ImportError:
+    from ._types import APIGatewayAuthorizerEventV2
 
 
 def extract_serial_number(event: APIGatewayAuthorizerEventV2) -> str | None:

@@ -1,6 +1,9 @@
 """Response builders for authorizer Lambda."""
 
-from ._types import AuthorizerResponse
+try:
+    from _types import AuthorizerResponse  # type: ignore[reportMissingImports]
+except ImportError:
+    from ._types import AuthorizerResponse
 
 
 def deny_response() -> AuthorizerResponse:
