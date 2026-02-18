@@ -23,7 +23,7 @@ data "aws_ssm_parameter" "intermediate_ca_certificate" {
 # ECR data sources for Lambda container images
 
 data "aws_ecr_repository" "health_lambda" {
-  name = "mtls-api-health-lambda"
+  name = local.ecr_repo_health
 }
 
 data "aws_ecr_image" "health_lambda" {
@@ -32,7 +32,7 @@ data "aws_ecr_image" "health_lambda" {
 }
 
 data "aws_ecr_repository" "authorizer_lambda" {
-  name = "mtls-api-authorizer-lambda"
+  name = local.ecr_repo_authorizer
 }
 
 data "aws_ecr_image" "authorizer_lambda" {

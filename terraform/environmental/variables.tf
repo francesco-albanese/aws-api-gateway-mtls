@@ -42,6 +42,12 @@ variable "route53_role_name" {
   default     = "terraform"
 }
 
+variable "ecr_project_name" {
+  description = "Project name prefix for ECR repositories (must match ecr stack's project_name)"
+  type        = string
+  default     = "mtls-api"
+}
+
 variable "health_lambda_image_tag" {
   description = "Image tag for health Lambda (git SHA or 'latest')"
   type        = string

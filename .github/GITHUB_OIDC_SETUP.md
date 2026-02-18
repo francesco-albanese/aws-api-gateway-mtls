@@ -65,47 +65,45 @@ aws iam update-assume-role-policy \
   --profile sandbox
 ```
 
-### 3. Configure GitHub Repository Secrets
+### 3. Configure GitHub Environment Secrets
 
-Set environment-specific role ARNs at repository level:
+Set secrets per GitHub environment using `--env`. Workflows reference generic names (`secrets.AWS_ROLE_ARN`, `secrets.ECR_REGISTRY`, `secrets.AWS_ACCOUNT_ID`) resolved via the `environment:` block.
 
 ```bash
 # Sandbox
-gh secret set AWS_ROLE_ARN_SANDBOX \
+gh secret set AWS_ROLE_ARN --env sandbox \
   --body "arn:aws:iam::645275603781:role/terraform"
+gh secret set ECR_REGISTRY --env sandbox \
+  --body "645275603781.dkr.ecr.eu-west-2.amazonaws.com"
+gh secret set AWS_ACCOUNT_ID --env sandbox \
+  --body "645275603781"
 
 # Staging
-gh secret set AWS_ROLE_ARN_STAGING \
+gh secret set AWS_ROLE_ARN --env staging \
   --body "arn:aws:iam::208318252599:role/terraform"
+gh secret set ECR_REGISTRY --env staging \
+  --body "208318252599.dkr.ecr.eu-west-2.amazonaws.com"
+gh secret set AWS_ACCOUNT_ID --env staging \
+  --body "208318252599"
 
 # UAT
-gh secret set AWS_ROLE_ARN_UAT \
+gh secret set AWS_ROLE_ARN --env uat \
   --body "arn:aws:iam::393766496546:role/terraform"
+gh secret set ECR_REGISTRY --env uat \
+  --body "393766496546.dkr.ecr.eu-west-2.amazonaws.com"
+gh secret set AWS_ACCOUNT_ID --env uat \
+  --body "393766496546"
 
 # Production
-gh secret set AWS_ROLE_ARN_PRODUCTION \
+gh secret set AWS_ROLE_ARN --env production \
   --body "arn:aws:iam::165835313193:role/terraform"
-```
-
-**Note:** Repository-level secrets allow terraform plan validation on PRs without requiring environment approval gates. Workflow selects correct role based on target environment.
-
-### 4. Configure ECR Registry Secrets
-
-Required for Lambda container image builds:
-
-```bash
-gh secret set ECR_REGISTRY_SANDBOX \
-  --body "645275603781.dkr.ecr.eu-west-2.amazonaws.com"
-
-gh secret set ECR_REGISTRY_STAGING \
-  --body "208318252599.dkr.ecr.eu-west-2.amazonaws.com"
-
-gh secret set ECR_REGISTRY_UAT \
-  --body "393766496546.dkr.ecr.eu-west-2.amazonaws.com"
-
-gh secret set ECR_REGISTRY_PRODUCTION \
+gh secret set ECR_REGISTRY --env production \
   --body "165835313193.dkr.ecr.eu-west-2.amazonaws.com"
+gh secret set AWS_ACCOUNT_ID --env production \
+  --body "165835313193"
 ```
+
+**Note:** Environment-level secrets are resolved automatically when a job specifies `environment: <name>`. Workflows use generic names (e.g. `secrets.AWS_ROLE_ARN`) — no suffix needed.
 
 ## Terraform Deployment Flow
 
@@ -140,4 +138,4 @@ Each requires:
 
 1. OIDC provider creation in target account
 2. `terraform` role trust policy update
-3. GitHub repository secret (`AWS_ROLE_ARN_<ENV>`)
+3. GitHub environment secrets (`AWS_ROLE_ARN`, `ECR_REGISTRY`, `AWS_ACCOUNT_ID`)

@@ -33,5 +33,5 @@ resource "aws_lambda_permission" "api_gateway" {
   action        = "lambda:InvokeFunction"
   function_name = aws_lambda_function.health.function_name
   principal     = "apigateway.amazonaws.com"
-  source_arn    = "${aws_apigatewayv2_api.mtls_api.execution_arn}/*/*"
+  source_arn    = "${aws_apigatewayv2_api.mtls_api.execution_arn}/*/GET/health"
 }

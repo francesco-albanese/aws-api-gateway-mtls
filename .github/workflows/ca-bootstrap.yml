@@ -110,10 +110,7 @@ jobs:
         with:
           environment: ${{ env.ACCOUNT }}
           aws_region: ${{ env.AWS_REGION }}
-          role_arn_sandbox: ${{ secrets.AWS_ROLE_ARN_SANDBOX }}
-          role_arn_staging: ${{ secrets.AWS_ROLE_ARN_STAGING }}
-          role_arn_uat: ${{ secrets.AWS_ROLE_ARN_UAT }}
-          role_arn_production: ${{ secrets.AWS_ROLE_ARN_PRODUCTION }}
+          role_arn: ${{ secrets.AWS_ROLE_ARN }}
           setup_terraform: 'true'
 
       - name: Terraform Init
