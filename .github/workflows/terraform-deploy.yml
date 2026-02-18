@@ -55,7 +55,7 @@ jobs:
       pull-requests: write
 
     environment:
-      name: ${{ steps.set-env.outputs.environment }}
+      name: ${{ inputs.environment || 'sandbox' }}
 
     outputs:
       environment: ${{ steps.set-env.outputs.environment }}
