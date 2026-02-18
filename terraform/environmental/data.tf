@@ -19,3 +19,23 @@ data "aws_ssm_parameter" "intermediate_ca_private_key" {
 data "aws_ssm_parameter" "intermediate_ca_certificate" {
   name = "/${var.project_name}/${var.account_name}/ca/intermediate/certificate"
 }
+
+# ECR data sources for Lambda container images
+
+data "aws_ecr_repository" "health_lambda" {
+  name = "mtls-api-health-lambda"
+}
+
+data "aws_ecr_image" "health_lambda" {
+  repository_name = data.aws_ecr_repository.health_lambda.name
+  image_tag       = var.health_lambda_image_tag
+}
+
+data "aws_ecr_repository" "authorizer_lambda" {
+  name = "mtls-api-authorizer-lambda"
+}
+
+data "aws_ecr_image" "authorizer_lambda" {
+  repository_name = data.aws_ecr_repository.authorizer_lambda.name
+  image_tag       = var.authorizer_lambda_image_tag
+}

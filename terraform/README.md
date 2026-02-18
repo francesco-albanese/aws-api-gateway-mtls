@@ -43,7 +43,7 @@ make certificate-bootstrap-apply ACCOUNT=sandbox
 
 **Certificate Integration:**
 
-- Reads certificates via data sources (`data-certificates.tf`)
+- Reads certificates via data sources (`data.tf`)
 - Enables automatic terraform plans on PRs
 
 **Deployment:**

@@ -41,3 +41,15 @@ variable "route53_role_name" {
   type        = string
   default     = "terraform"
 }
+
+variable "health_lambda_image_tag" {
+  description = "Image tag for health Lambda (git SHA or 'latest')"
+  type        = string
+  default     = "latest"
+}
+
+variable "authorizer_lambda_image_tag" {
+  description = "Image tag for authorizer Lambda (git SHA or 'latest')"
+  type        = string
+  default     = "latest"
+}
