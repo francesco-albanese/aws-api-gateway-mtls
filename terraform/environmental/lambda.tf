@@ -1,5 +1,5 @@
 # Lambda function for health endpoint
-# Container image deployed via GitHub Actions, referenced by tag
+# Container image deployed via GitHub Actions, resolved from tag to digest at plan time
 # ECR repository created separately in terraform/ecr stack
 
 variable "health_lambda_image_tag" {
@@ -12,11 +12,16 @@ data "aws_ecr_repository" "health_lambda" {
   name = "mtls-api-health-lambda"
 }
 
+data "aws_ecr_image" "health_lambda" {
+  repository_name = data.aws_ecr_repository.health_lambda.name
+  image_tag       = var.health_lambda_image_tag
+}
+
 resource "aws_lambda_function" "health" {
   function_name = "mtls-api-health"
   role          = aws_iam_role.health_lambda.arn
   package_type  = "Image"
-  image_uri     = "${data.aws_ecr_repository.health_lambda.repository_url}:${var.health_lambda_image_tag}"
+  image_uri     = "${data.aws_ecr_repository.health_lambda.repository_url}@${data.aws_ecr_image.health_lambda.image_digest}"
   architectures = ["arm64"]
   timeout       = 30
   memory_size   = 256
@@ -164,11 +169,16 @@ data "aws_ecr_repository" "authorizer_lambda" {
   name = "mtls-api-authorizer-lambda"
 }
 
+data "aws_ecr_image" "authorizer_lambda" {
+  repository_name = data.aws_ecr_repository.authorizer_lambda.name
+  image_tag       = var.authorizer_lambda_image_tag
+}
+
 resource "aws_lambda_function" "authorizer" {
   function_name = "mtls-api-authorizer"
   role          = aws_iam_role.authorizer_lambda.arn
   package_type  = "Image"
-  image_uri     = "${data.aws_ecr_repository.authorizer_lambda.repository_url}:${var.authorizer_lambda_image_tag}"
+  image_uri     = "${data.aws_ecr_repository.authorizer_lambda.repository_url}@${data.aws_ecr_image.authorizer_lambda.image_digest}"
   architectures = ["arm64"]
   timeout       = 30
   memory_size   = 256

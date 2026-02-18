@@ -104,3 +104,11 @@ jobs:
           tags: |
             ${{ steps.aws-config.outputs.ecr_registry }}/mtls-api-${{ matrix.lambda }}-lambda:${{ github.sha }}
             ${{ steps.aws-config.outputs.ecr_registry }}/mtls-api-${{ matrix.lambda }}-lambda:latest
+
+  deploy:
+    name: Deploy Lambdas
+    needs: build-and-push
+    uses: ./.github/workflows/terraform-deploy.yml
+    with:
+      environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'sandbox' }}
+    secrets: inherit
