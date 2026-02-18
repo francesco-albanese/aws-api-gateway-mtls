@@ -101,19 +101,15 @@ jobs:
 
       - name: Terraform Init
         env:
-          AWS_PROFILE: ""
           ACCOUNT: ${{ steps.set-env.outputs.environment }}
         run: make environmental-init ACCOUNT=${{ env.ACCOUNT }}
 
       - name: Terraform Validate
-        env:
-          AWS_PROFILE: ""
         run: make environmental-validate
 
       - name: Terraform Plan
         id: plan
         env:
-          AWS_PROFILE: ""
           ACCOUNT: ${{ steps.set-env.outputs.environment }}
         run: |
           set +e
@@ -175,13 +171,11 @@ jobs:
 
       - name: Terraform Init
         env:
-          AWS_PROFILE: ""
           ACCOUNT: ${{ needs.terraform-plan.outputs.environment }}
         run: make environmental-init ACCOUNT=${{ env.ACCOUNT }}
 
       - name: Terraform Apply
         env:
-          AWS_PROFILE: ""
           ACCOUNT: ${{ needs.terraform-plan.outputs.environment }}
         run: |
           IMAGE_TAG_FLAGS=""

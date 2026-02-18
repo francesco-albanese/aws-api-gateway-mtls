@@ -55,8 +55,6 @@ jobs:
           role_arn: ${{ secrets.AWS_ROLE_ARN }}
 
       - name: Run rotation script
-        env:
-          AWS_PROFILE: ""
         run: |
           OUTPUT_DIR="ca_operations/output/${{ env.ACCOUNT }}/rotation"
           mkdir -p "$OUTPUT_DIR"
