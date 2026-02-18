@@ -191,3 +191,56 @@ class DynamoDBClient:
                 e,
             )
             return False
+
+    def rollback_rotate_certificate(
+        self,
+        table_name: str,
+        old_serial: str,
+        new_serial: str,
+    ) -> bool:
+        """Atomically reactivate old cert and delete new cert.
+
+        Used to roll back a failed rotation: sets old_serial status
+        back to active and removes the new_serial entry.
+
+        Args:
+            table_name: DynamoDB table name
+            old_serial: Serial number of cert to reactivate
+            new_serial: Serial number of cert to delete
+
+        Returns:
+            True if transaction succeeded, False otherwise
+        """
+        try:
+            self.client.transact_write_items(
+                TransactItems=[
+                    {
+                        "Update": {
+                            "TableName": table_name,
+                            "Key": {"serialNumber": {"S": old_serial}},
+                            "UpdateExpression": "SET #s = :status",
+                            "ConditionExpression": "#s = :revoked",
+                            "ExpressionAttributeNames": {"#s": "status"},
+                            "ExpressionAttributeValues": {
+                                ":status": {"S": "active"},
+                                ":revoked": {"S": "revoked"},
+                            },
+                        }
+                    },
+                    {
+                        "Delete": {
+                            "TableName": table_name,
+                            "Key": {"serialNumber": {"S": new_serial}},
+                        }
+                    },
+                ]
+            )
+            return True
+        except ClientError as e:
+            logger.error(
+                "Transaction failed rolling back %s -> %s: %s",
+                old_serial,
+                new_serial,
+                e,
+            )
+            return False

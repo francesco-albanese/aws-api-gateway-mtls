@@ -14,7 +14,6 @@ from ca_operations.lib.cert_utils import (
     deserialize_private_key,
     extract_certificate_metadata,
     serialize_certificate,
-    serialize_private_key,
 )
 from ca_operations.lib.certificate_builder import CertificateBuilder
 from ca_operations.lib.config import CAConfig
@@ -131,15 +130,29 @@ def rotate_client_certs(
                 if not dynamodb_client.rotate_certificate(dynamodb_table, old_serial, new_metadata):
                     raise RuntimeError(f"Failed to rotate cert {old_serial} -> {new_serial}")
 
-                ssm_client.put_client_certificate(
-                    project_name, environment, client_id, client_key_pem, new_cert_pem
-                )
+                try:
+                    ssm_client.put_client_certificate(
+                        project_name, environment, client_id, client_key_pem, new_cert_pem
+                    )
+                except Exception as ssm_err:
+                    LOGGER.error(
+                        "SSM write failed for %s: %s — rolling back DynamoDB", client_id, ssm_err
+                    )
+                    if not dynamodb_client.rollback_rotate_certificate(
+                        dynamodb_table, old_serial, new_serial
+                    ):
+                        LOGGER.critical(
+                            "ROLLBACK FAILED for %s: DynamoDB inconsistent — old=%s new=%s",
+                            client_id,
+                            old_serial,
+                            new_serial,
+                        )
+                    raise
 
             # Write artifacts for audit
             client_output_dir = output_dir / client_id
             client_output_dir.mkdir(parents=True, exist_ok=True)
             (client_output_dir / "client.pem").write_bytes(new_cert_pem)
-            (client_output_dir / "client.key").write_bytes(serialize_private_key(client_key))
             (client_output_dir / "metadata.json").write_text(json.dumps(new_metadata, indent=2))
 
             reissued_serials.append(new_serial)

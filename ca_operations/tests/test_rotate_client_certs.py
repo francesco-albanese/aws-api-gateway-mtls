@@ -1,5 +1,6 @@
 """Tests for rotate_client_certs function."""
 
+import logging
 from datetime import UTC, datetime
 from pathlib import Path
 from unittest.mock import MagicMock, patch
@@ -100,7 +101,6 @@ def test_happy_path(
     # Verify artifacts written
     client_dir = temp_output_dir / "test-client-001"
     assert (client_dir / "client.pem").exists()
-    assert (client_dir / "client.key").exists()
     assert (client_dir / "metadata.json").exists()
 
 
@@ -314,6 +314,106 @@ def test_dynamodb_transaction_failure(
 
     # SSM should NOT be updated since DynamoDB transaction failed
     mock_ssm_client.put_client_certificate.assert_not_called()
+
+
+def test_ssm_write_failure_triggers_rollback(
+    mock_ssm_client: MagicMock,
+    mock_dynamodb_client: MagicMock,
+    intermediate_key: RSAPrivateKey,
+    intermediate_cert: x509.Certificate,
+    client_key: RSAPrivateKey,
+    client_cert: x509.Certificate,
+    rotation_ca_config: CAConfig,
+    temp_output_dir: Path,
+) -> None:
+    """Test SSM put_client_certificate failure triggers DynamoDB rollback."""
+    cert_metadata = _make_cert_metadata("test-client-001", "123456789")
+    mock_dynamodb_client.get_active_certificates.return_value = [cert_metadata]
+
+    mock_ssm_client.get_intermediate_ca.return_value = (
+        serialize_private_key(intermediate_key),
+        serialize_certificate(intermediate_cert),
+    )
+    mock_ssm_client.get_client_certificate.return_value = (
+        serialize_private_key(client_key),
+        serialize_certificate(client_cert),
+    )
+    mock_dynamodb_client.rotate_certificate.return_value = True
+    mock_ssm_client.put_client_certificate.side_effect = RuntimeError("SSM write failed")
+    mock_dynamodb_client.rollback_rotate_certificate.return_value = True
+
+    result = rotate_client_certs(
+        environment="sandbox",
+        dynamodb_table="test-table",
+        ssm_client=mock_ssm_client,
+        dynamodb_client=mock_dynamodb_client,
+        config=rotation_ca_config,
+        output_dir=temp_output_dir,
+        dry_run=False,
+    )
+
+    assert result.reissued_count == 0
+    assert result.failed_count == 1
+    assert "test-client-001" in result.failed_client_ids
+
+    # Verify rollback was called with correct args
+    mock_dynamodb_client.rollback_rotate_certificate.assert_called_once()
+    call_args = mock_dynamodb_client.rollback_rotate_certificate.call_args[0]
+    assert call_args[0] == "test-table"
+    assert call_args[1] == "123456789"
+    # new_serial is dynamic, just verify it's a string
+    assert isinstance(call_args[2], str)
+
+
+def test_ssm_write_failure_rollback_fails(
+    mock_ssm_client: MagicMock,
+    mock_dynamodb_client: MagicMock,
+    intermediate_key: RSAPrivateKey,
+    intermediate_cert: x509.Certificate,
+    client_key: RSAPrivateKey,
+    client_cert: x509.Certificate,
+    rotation_ca_config: CAConfig,
+    temp_output_dir: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """Test SSM failure + rollback failure emits CRITICAL log."""
+    cert_metadata = _make_cert_metadata("test-client-001", "123456789")
+    mock_dynamodb_client.get_active_certificates.return_value = [cert_metadata]
+
+    mock_ssm_client.get_intermediate_ca.return_value = (
+        serialize_private_key(intermediate_key),
+        serialize_certificate(intermediate_cert),
+    )
+    mock_ssm_client.get_client_certificate.return_value = (
+        serialize_private_key(client_key),
+        serialize_certificate(client_cert),
+    )
+    mock_dynamodb_client.rotate_certificate.return_value = True
+    mock_ssm_client.put_client_certificate.side_effect = RuntimeError("SSM write failed")
+    mock_dynamodb_client.rollback_rotate_certificate.return_value = False
+
+    ca_logger = logging.getLogger("ca_operations")
+    ca_logger.propagate = True
+    try:
+        with caplog.at_level(logging.CRITICAL, logger="ca_operations"):
+            result = rotate_client_certs(
+                environment="sandbox",
+                dynamodb_table="test-table",
+                ssm_client=mock_ssm_client,
+                dynamodb_client=mock_dynamodb_client,
+                config=rotation_ca_config,
+                output_dir=temp_output_dir,
+                dry_run=False,
+            )
+    finally:
+        ca_logger.propagate = False
+
+    assert result.failed_count == 1
+    assert "test-client-001" in result.failed_client_ids
+
+    # Verify CRITICAL rollback failure log was emitted
+    critical_messages = [r.message for r in caplog.records if r.levelno == logging.CRITICAL]
+    assert any("ROLLBACK FAILED" in msg and "test-client-001" in msg for msg in critical_messages)
 
 
 def test_main_missing_args_returns_error() -> None:

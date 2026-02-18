@@ -96,11 +96,11 @@ jobs:
             DRY_RUN_FLAG="--dry-run"
           fi
 
-          CLIENT_FLAG=""
+          CLIENT_ARGS=()
           if [ -n "${{ github.event.inputs.client_id }}" ]; then
-            CLIENT_FLAG="--client-id ${{ github.event.inputs.client_id }}"
+            CLIENT_ARGS+=(--client-id "${{ github.event.inputs.client_id }}")
           elif [ "${{ github.event.inputs.rotate_all }}" = "true" ]; then
-            CLIENT_FLAG="--all"
+            CLIENT_ARGS+=(--all)
           fi
 
           uv run --group ca python -m ca_operations.scripts.rotate_client_certs \
@@ -108,7 +108,7 @@ jobs:
             --project-name "apigw-mtls" \
             --dynamodb-table "mtls-clients-metadata" \
             --output-dir "$OUTPUT_DIR" \
-            $CLIENT_FLAG \
+            "${CLIENT_ARGS[@]}" \
             $DRY_RUN_FLAG
 
       - name: Upload rotation artifacts

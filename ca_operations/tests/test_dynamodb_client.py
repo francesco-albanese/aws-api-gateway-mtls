@@ -255,3 +255,41 @@ class TestDynamoDBClient:
         result = client.rotate_certificate("test-table", "11223344", new_metadata)
 
         assert result is False
+
+    def test_rollback_rotate_certificate_success(self, mock_boto3: MagicMock) -> None:
+        """Should atomically reactivate old cert and delete new cert."""
+        mock_client = MagicMock()
+        mock_boto3.client.return_value = mock_client
+
+        client = DynamoDBClient()
+        result = client.rollback_rotate_certificate("test-table", "11223344", "99887766")
+
+        assert result is True
+        mock_client.transact_write_items.assert_called_once()
+        call_kwargs = mock_client.transact_write_items.call_args[1]
+        items = call_kwargs["TransactItems"]
+        assert len(items) == 2
+        assert "Update" in items[0]
+        assert items[0]["Update"]["Key"] == {"serialNumber": {"S": "11223344"}}
+        assert items[0]["Update"]["ExpressionAttributeValues"][":status"] == {"S": "active"}
+        assert "Delete" in items[1]
+        assert items[1]["Delete"]["Key"] == {"serialNumber": {"S": "99887766"}}
+
+    def test_rollback_rotate_certificate_failure(self, mock_boto3: MagicMock) -> None:
+        """Should return False when transaction fails."""
+        mock_client = MagicMock()
+        mock_client.transact_write_items.side_effect = ClientError(
+            {
+                "Error": {
+                    "Code": "TransactionCanceledException",
+                    "Message": "condition check failed",
+                }
+            },
+            "TransactWriteItems",
+        )
+        mock_boto3.client.return_value = mock_client
+
+        client = DynamoDBClient()
+        result = client.rollback_rotate_certificate("test-table", "11223344", "99887766")
+
+        assert result is False
