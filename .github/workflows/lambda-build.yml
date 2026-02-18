@@ -52,7 +52,7 @@ jobs:
       contents: read
 
     environment:
-      name: ${{ steps.set-env.outputs.environment }}
+      name: ${{ github.event_name == 'workflow_dispatch' && github.event.inputs.environment || 'sandbox' }}
 
     steps:
       - name: Set environment
