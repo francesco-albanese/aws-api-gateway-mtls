@@ -101,7 +101,13 @@ jobs:
   terraform-apply:
     name: Terraform Apply
     needs: terraform-plan
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main' && needs.terraform-plan.outputs.exitcode == '0'
+    if: |
+      github.ref == 'refs/heads/main' &&
+      needs.terraform-plan.outputs.exitcode == '0' &&
+      (
+        github.event_name == 'workflow_dispatch' ||
+        (github.event_name == 'workflow_call' && needs.terraform-plan.outputs.environment == 'sandbox')
+      )
     runs-on: ubuntu-latest
 
     permissions:
