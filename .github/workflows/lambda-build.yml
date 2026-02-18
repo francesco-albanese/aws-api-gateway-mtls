@@ -112,4 +112,5 @@ jobs:
       environment: ${{ github.event_name == 'workflow_dispatch' && inputs.environment || 'sandbox' }}
       health_lambda_image_tag: ${{ github.sha }}
       authorizer_lambda_image_tag: ${{ github.sha }}
+      auto_apply: true
     secrets: inherit
