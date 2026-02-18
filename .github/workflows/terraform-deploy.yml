@@ -1,7 +1,15 @@
 name: Terraform Deploy
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - "terraform/environmental/**"
+      - ".github/workflows/terraform-deploy.yml"
+      - ".github/actions/configure-aws-env/**"
   pull_request:
+    paths:
+      - "terraform/**"
   workflow_dispatch:
     inputs:
       environment:
@@ -40,6 +48,15 @@ on:
         required: false
         type: string
         default: 'latest'
+      auto_apply:
+        description: 'Auto-apply after plan (used by caller workflows)'
+        required: false
+        type: boolean
+        default: false
+
+concurrency:
+  group: terraform-deploy-${{ inputs.environment || 'sandbox' }}
+  cancel-in-progress: false
 
 env:
   AWS_REGION: eu-west-2
@@ -132,7 +149,8 @@ jobs:
       needs.terraform-plan.outputs.exitcode == '0' &&
       (
         github.event_name == 'workflow_dispatch' ||
-        (github.event_name == 'workflow_call' && needs.terraform-plan.outputs.environment == 'sandbox')
+        (github.event_name == 'push' && needs.terraform-plan.outputs.environment == 'sandbox') ||
+        (inputs.auto_apply && needs.terraform-plan.outputs.environment == 'sandbox')
       )
     runs-on: ubuntu-latest
 
