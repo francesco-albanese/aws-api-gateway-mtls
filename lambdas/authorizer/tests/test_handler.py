@@ -17,7 +17,9 @@ class TestCertExtraction:
     """Tests for certificate field extraction."""
 
     def test_extract_serial_number(self, event_with_mtls_cert: APIGatewayAuthorizerEventV2) -> None:
-        assert extract_serial_number(event_with_mtls_cert) == "ABC123DEF456"
+        assert (
+            extract_serial_number(event_with_mtls_cert) == "302651828373057198556217564450567695063"
+        )
 
     def test_extract_serial_number_missing(self, base_event: APIGatewayAuthorizerEventV2) -> None:
         assert extract_serial_number(base_event) is None
@@ -91,9 +93,9 @@ class TestCertMetadataLookup:
             }
             from src.authorizer.cert_metadata import lookup_cert_metadata
 
-            result = lookup_cert_metadata("ABC123DEF456", "test-table")
+            result = lookup_cert_metadata("302651828373057198556217564450567695063", "test-table")
             assert result is not None
-            assert result["serialNumber"] == "ABC123DEF456"
+            assert result["serialNumber"] == "302651828373057198556217564450567695063"
             assert result["client_id"] == "test-client"
 
     def test_lookup_returns_none_not_found(self) -> None:
@@ -265,7 +267,7 @@ class TestHandler:
             response = handler(event_with_mtls_cert, lambda_context)
         assert response["isAuthorized"] is True
         ctx = response.get("context", {})
-        assert ctx["serialNumber"] == "ABC123DEF456"
+        assert ctx["serialNumber"] == "302651828373057198556217564450567695063"
         assert ctx["clientCN"] == "test-client"
         assert ctx["clientId"] == "test-client"
         assert ctx["validityNotBefore"] == "2025-01-01T00:00:00Z"
@@ -414,7 +416,7 @@ class TestStructuredLogOutput:
         log = json.loads(captured.out.strip())
         assert log["level"] == "info"
         assert "granted" in log["message"].lower()
-        assert log["serialNumber"] == "ABC123DEF456"
+        assert log["serialNumber"] == "302651828373057198556217564450567695063"
         assert log["clientCN"] == "test-client"
 
     def test_log_on_cert_not_found(
@@ -429,4 +431,4 @@ class TestStructuredLogOutput:
         log = json.loads(captured.out.strip())
         assert log["level"] == "warn"
         assert "not found" in log["message"].lower()
-        assert log["serialNumber"] == "ABC123DEF456"
+        assert log["serialNumber"] == "302651828373057198556217564450567695063"

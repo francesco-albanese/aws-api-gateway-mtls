@@ -45,7 +45,7 @@ class TestHandlerWithAuthorizerContext:
     ) -> None:
         response = handler(event_with_authorizer_context, mock_context)
         body = parse_response_body(response)
-        assert body["mtls"]["serialNumber"] == "1234567890ABCDEF"
+        assert body["mtls"]["serialNumber"] == "1311768467294899695"
 
     def test_includes_validity(
         self,
@@ -181,7 +181,7 @@ class TestPartialAuthorizerContext:
             "requestContext": {
                 "authorizer": {
                     "lambda": {
-                        "serialNumber": "1234567890ABCDEF",
+                        "serialNumber": "1311768467294899695",
                     }
                 }
             }
@@ -189,7 +189,7 @@ class TestPartialAuthorizerContext:
         response = handler(event, mock_context)
         body = parse_response_body(response)
         assert body["mtls"]["enabled"] is True
-        assert body["mtls"]["serialNumber"] == "1234567890ABCDEF"
+        assert body["mtls"]["serialNumber"] == "1311768467294899695"
         assert body["mtls"]["clientCN"] is None
 
     def test_client_cn_only(self, mock_context: LambdaContext) -> None:

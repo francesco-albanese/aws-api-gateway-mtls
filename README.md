@@ -61,6 +61,12 @@ AWS API Gateway requires a custom domain for mTLS - cannot enforce client certif
 - re-issues all active client certificates with the new rotated intermediate CA
 - re uploads secrets in SSM Parameter store, cert metadata in DynamoDB, and S3 truststore
 
+6. [ca-rotate-clients workflow](./.github/workflows/ca-rotate-clients.yml)
+
+- rotates individual or all active client certificates without changing the intermediate CA
+- generates new cert signed by current intermediate CA, atomically updates DynamoDB and SSM
+- no truststore update needed (intermediate CA stays the same)
+
 ## Security
 
 Root CA keys stored in SSM Parameter Store (SecureString, KMS-encrypted). In production, root CA keys would be managed via AWS CloudHSM.

@@ -69,11 +69,11 @@ ca_operations/output/
 ## Metadata Format
 
 Serial numbers use UUID v4 for strong uniqueness guarantees.
-Formatted as hex with colons for readability and OpenSSL compatibility.
+Formatted as decimal integer string matching API Gateway serial number format.
 
 ```json
 {
-  "serialNumber": "3A:F2:B1:4C:...",
+  "serialNumber": "302651828373057198556217564450567695063",
   "CN": "api-client-001",
   "notAfter": "2027-01-12T10:00:00+00:00",
   "status": "active",

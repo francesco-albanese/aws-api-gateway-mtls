@@ -11,7 +11,8 @@
       "WebSearch",
       "Bash(uv run pytest:*)",
       "Bash(prek run:*)",
-      "WebFetch(domain:github.com)"
+      "WebFetch(domain:github.com)",
+      "Bash(uv run:*)"
     ]
   },
   "outputStyle": "default",

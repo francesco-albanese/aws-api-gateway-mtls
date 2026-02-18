@@ -5,6 +5,7 @@
 ```
 ca-bootstrap → ecr-deploy → lambda-build → terraform-deploy → client-provision
                                                               ↳ ca-rotate-intermediate (manual, post-deploy)
+                                                              ↳ ca-rotate-clients (manual, post-deploy)
 ```
 
 ## Overview
@@ -17,6 +18,7 @@ ca-bootstrap → ecr-deploy → lambda-build → terraform-deploy → client-pro
 | [`terraform-deploy.yml`](terraform-deploy.yml)     | Auto plan on PR / manual apply              | Deploy API Gateway, Lambda, DynamoDB infra  | ecr-deploy, lambda-build       |
 | [`client-provision.yml`](client-provision.yml)     | Manual                                      | Provision mTLS client certificates          | ca-bootstrap, terraform-deploy |
 | [`ca-rotate-intermediate.yml`](ca-rotate-intermediate.yml) | Manual | Rotate intermediate CA + re-issue client certs | ca-bootstrap, client-provision |
+| [`ca-rotate-clients.yml`](ca-rotate-clients.yml) | Manual | Rotate client certs (keep same intermediate CA) | ca-bootstrap, client-provision |
 | [`claude-code-review.yml`](claude-code-review.yml) | Auto on PR (opened/synchronize)             | Claude AI code review                       | None                           |
 | [`claude.yml`](claude.yml)                         | Auto on `@claude` mention                   | Claude integration for issues/PRs           | None                           |
 
@@ -45,6 +47,10 @@ Reads `clients/{env}.json` config, generates key pairs, signs CSR with Intermedi
 ### ca-rotate-intermediate.yml
 
 Generates new Intermediate CA signed by Root CA (from SSM), re-issues all active client certs, updates SSM + DynamoDB + S3 truststore. Defaults to dry-run mode. Environment protection rules provide approval gate for production.
+
+### ca-rotate-clients.yml
+
+Rotates individual or all active client certificates without changing the intermediate CA. Generates new certs signed by the current intermediate CA, atomically updates DynamoDB metadata and SSM parameters. No truststore update needed since the intermediate CA remains unchanged. Defaults to dry-run mode.
 
 ### claude-code-review.yml
 

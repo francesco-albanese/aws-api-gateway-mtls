@@ -27,7 +27,7 @@ def event_with_authorizer_context() -> APIGatewayProxyEventV2:
         "requestContext": {
             "authorizer": {
                 "lambda": {
-                    "serialNumber": "1234567890ABCDEF",
+                    "serialNumber": "1311768467294899695",
                     "clientCN": "test-client",
                     "clientId": "test-client",
                     "validityNotBefore": "2025-01-01T00:00:00Z",
