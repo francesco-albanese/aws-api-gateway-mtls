@@ -2,6 +2,8 @@
 
 The goal of this project is to create an AWS API Gateway HTTP regional endpoint with mTLS enforced. Mutual TLS is very common in finance industry for machine to machine communication. It gives an extra layer of security due to the fact that both the server and the client have to present certificates at handshake.
 
+![Basic flow diagram](./diagrams/basic-flow-aws-components.png)
+
 ## Technical Challenge
 
 AWS API Gateway requires a custom domain for mTLS - cannot enforce client certificate validation using the default `execute-api` endpoints.An S3 Trust Store is also required, with a PEM bundle containing the certificate chain.
@@ -84,3 +86,8 @@ Root CA keys stored in SSM Parameter Store (SecureString, KMS-encrypted). In pro
 ## Performance stats
 
 [Performance Stats](./docs/PERFORMANCE.md)
+
+## Diagrams
+
+![Business Logic](./diagrams/lambdas-business-logic.png)
+[all diagrams](./diagrams/)

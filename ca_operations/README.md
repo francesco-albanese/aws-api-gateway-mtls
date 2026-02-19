@@ -14,6 +14,10 @@ The script writes artifacts to `ca-operations/output` folder and Terraform provi
 - CA extracts subject DN (distinguished name) and public key FROM CSR
 - CA issues certificate without ever seeing requester's private key
 
+## CA provisioning diagram
+
+![ca operations diagram](../diagrams/ca-client-provisioning.png)
+
 ## Certificate Hierarchy
 
 3-tier PKI:
