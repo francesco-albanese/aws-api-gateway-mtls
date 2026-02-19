@@ -11,11 +11,10 @@ resource "aws_lambda_function" "authorizer" {
 
   environment {
     variables = {
-      DYNAMODB_TABLE_NAME = aws_dynamodb_table.mtls_clients_metadata.name
-      # --- OTEL disabled for cold start benchmarking ---
-      # AWS_LAMBDA_EXEC_WRAPPER              = "/opt/otel-instrument"
-      # OTEL_SERVICE_NAME                    = "mtls-api-authorizer"
-      # OTEL_AWS_APPLICATION_SIGNALS_ENABLED = "true"
+      DYNAMODB_TABLE_NAME                  = aws_dynamodb_table.mtls_clients_metadata.name
+      AWS_LAMBDA_EXEC_WRAPPER              = "/opt/otel-instrument"
+      OTEL_SERVICE_NAME                    = "mtls-api-authorizer"
+      OTEL_AWS_APPLICATION_SIGNALS_ENABLED = "true"
     }
   }
 

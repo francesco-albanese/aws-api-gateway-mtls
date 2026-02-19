@@ -34,17 +34,35 @@ The cold start of 1.5s average seems to be too high for a python lambda, the OTE
 
 ## Concurrent load 512MB memory
 
-I repeated the same test triggering 10 concurrent requests bumping up the memory to 512MB and this fixed the throttling and errors. The cold start remained pretty much the same (1.5s) but the average latency is now halved, as expected.
+I repeated the same test triggering 10 concurrent requests bumping up the memory to 512MB and this fixed the throttling and errors. The cold start improved slightly (1.1s) but the average latency is now halved, as expected.
 
 I will repeat the test again disabling the OTEL instrumentation which should reduce the cold start time significantly.
 
 Results below:
 
-- cold start of both lambdas
-  ![cold start both lambdas](cold-start-lambdas-512mb.png)
+- cold start of authorizer lambdas
+  ![cold start authorizer](cold-start-authorizer-512mb.png)
+
+- cold start of health lambda
+  ![cold start health](cold-start-health-512mb.png)
 
 - latency of authorizer
   ![latency of authorizer](latency-authorizer-512mb.png)
 
 - latency of health
   ![latency of health](latency-health-512mb.png)
+
+## Concurrent load with OTEL disabled
+
+Disabling OTEL instrumentation shows a 50% reduction in the cold start, confirming the hypothesis. This experiment confirms the tradeoff between a solid distributed tracing observability and cold start performance.
+
+- cold start authorizer
+  ![cold start authorizer no otel](cold-start-authorizer-no-otel.png)
+
+- cold start health
+  ![cold start health no otel](cold-start-health-no-otel.png)
+
+Some mitigation options could be:
+
+- provision concurrency could be enabled for the authorizer only, keeping the lambda warm for a negligible cost ($0.20 per 1M requests)
+- investigating what dependencies could be eliminated to reduce the image size
