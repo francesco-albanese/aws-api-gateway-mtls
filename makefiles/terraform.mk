@@ -1,6 +1,10 @@
 SHELL := /bin/bash
 
+ifneq ($(AWS_PROFILE),)
 terraform = AWS_PROFILE=$(AWS_PROFILE) terraform
+else
+terraform = terraform
+endif
 STACKS = $(dir $(wildcard terraform/*/.))
 STACKS := $(sort $(notdir $(STACKS:/=)))
 

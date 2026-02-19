@@ -102,10 +102,10 @@ jobs:
       - name: Terraform Init
         env:
           ACCOUNT: ${{ steps.set-env.outputs.environment }}
-        run: make environmental-init ACCOUNT=${{ env.ACCOUNT }}
+        run: make environmental-init ACCOUNT=${{ env.ACCOUNT }} AWS_PROFILE=
 
       - name: Terraform Validate
-        run: make environmental-validate
+        run: make environmental-validate AWS_PROFILE=
 
       - name: Terraform Plan
         id: plan
@@ -120,7 +120,7 @@ jobs:
           if [ "${{ inputs.authorizer_lambda_image_tag }}" != "latest" ] && [ -n "${{ inputs.authorizer_lambda_image_tag }}" ]; then
             IMAGE_TAG_FLAGS="${IMAGE_TAG_FLAGS} -var=authorizer_lambda_image_tag=${{ inputs.authorizer_lambda_image_tag }}"
           fi
-          make environmental-plan ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="${IMAGE_TAG_FLAGS}"
+          make environmental-plan ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="${IMAGE_TAG_FLAGS}" AWS_PROFILE=
           exitcode=$?
           echo "exitcode=$exitcode" >> $GITHUB_OUTPUT
           exit $exitcode
@@ -172,7 +172,7 @@ jobs:
       - name: Terraform Init
         env:
           ACCOUNT: ${{ needs.terraform-plan.outputs.environment }}
-        run: make environmental-init ACCOUNT=${{ env.ACCOUNT }}
+        run: make environmental-init ACCOUNT=${{ env.ACCOUNT }} AWS_PROFILE=
 
       - name: Terraform Apply
         env:
@@ -185,4 +185,4 @@ jobs:
           if [ "${{ inputs.authorizer_lambda_image_tag }}" != "latest" ] && [ -n "${{ inputs.authorizer_lambda_image_tag }}" ]; then
             IMAGE_TAG_FLAGS="${IMAGE_TAG_FLAGS} -var=authorizer_lambda_image_tag=${{ inputs.authorizer_lambda_image_tag }}"
           fi
-          make environmental-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS='-auto-approve '"${IMAGE_TAG_FLAGS}"
+          make environmental-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS='-auto-approve '"${IMAGE_TAG_FLAGS}" AWS_PROFILE=
