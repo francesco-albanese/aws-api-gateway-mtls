@@ -7,7 +7,7 @@ resource "aws_lambda_function" "authorizer" {
   image_uri     = "${data.aws_ecr_repository.authorizer_lambda.repository_url}@${data.aws_ecr_image.authorizer_lambda.image_digest}"
   architectures = ["arm64"]
   timeout       = 30
-  memory_size   = 256
+  memory_size   = 512
 
   environment {
     variables = {
