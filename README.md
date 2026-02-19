@@ -80,3 +80,7 @@ Root CA keys stored in SSM Parameter Store (SecureString, KMS-encrypted). In pro
 ## Client provisioning
 
 [Client Provisioning](./clients/README.md)
+
+## Performance stats
+
+[Performance Stats](./docs/PERFORMANCE.md)
