@@ -181,15 +181,15 @@ jobs:
 
       - name: Terraform Init
         if: steps.check-artifacts.outputs.has_artifacts == 'true'
-        run: make client-provisioning-init ACCOUNT=${{ env.ACCOUNT }}
+        run: make client-provisioning-init ACCOUNT=${{ env.ACCOUNT }} AWS_PROFILE=
 
       - name: Terraform Plan
         if: steps.check-artifacts.outputs.has_artifacts == 'true'
-        run: make client-provisioning-plan ACCOUNT=${{ env.ACCOUNT }}
+        run: make client-provisioning-plan ACCOUNT=${{ env.ACCOUNT }} AWS_PROFILE=
 
       - name: Terraform Apply
         if: steps.check-artifacts.outputs.has_artifacts == 'true'
-        run: make client-provisioning-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="-auto-approve"
+        run: make client-provisioning-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS="-auto-approve" AWS_PROFILE=
 
       - name: Clean up local artifacts
         if: always()

@@ -44,14 +44,14 @@ jobs:
       - name: Terraform Init
         env:
           ACCOUNT: ${{ inputs.environment }}
-        run: make ecr-init ACCOUNT=${{ env.ACCOUNT }}
+        run: make ecr-init ACCOUNT=${{ env.ACCOUNT }} AWS_PROFILE=
 
       - name: Terraform Plan
         env:
           ACCOUNT: ${{ inputs.environment }}
-        run: make ecr-plan ACCOUNT=${{ env.ACCOUNT }}
+        run: make ecr-plan ACCOUNT=${{ env.ACCOUNT }} AWS_PROFILE=
 
       - name: Terraform Apply
         env:
           ACCOUNT: ${{ inputs.environment }}
-        run: make ecr-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS='-auto-approve'
+        run: make ecr-apply ACCOUNT=${{ env.ACCOUNT }} TF_FLAGS='-auto-approve' AWS_PROFILE=

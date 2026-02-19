@@ -7,7 +7,7 @@ set -euo pipefail
 PROJECT_NAME="${PROJECT_NAME:-apigw-mtls}"
 ACCOUNT="${ACCOUNT:-sandbox}"
 CLIENT_ID="${CLIENT_ID:-api-client-001}"
-AWS_PROFILE="${AWS_PROFILE:-awsclifranco-admin}"
+AWS_PROFILE="${AWS_PROFILE:-sandbox-admin}"
 DOMAIN_NAME="${DOMAIN_NAME:-francescoalbanese.dev}"
 ENDPOINT="${ENDPOINT:-/health}"
 
